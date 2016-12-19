@@ -1,0 +1,137 @@
+\documentclass[twocolumn]{article}
+\usepackage{amsmath}
+\usepackage{CJK}
+\usepackage{setspace}
+\usepackage{anysize}
+\marginsize{2cm}{2cm}{2cm}{2cm}
+
+\begin{CJK}{UTF8}{min}
+
+\author{}
+  \title{計算数学特論　第１回　レポート}
+  \date{\today}
+
+\begin{document}
+  \maketitle
+
+\section{課題１} フェルマーの小定理
+
+\subsection{}
+ｐを素数とする。\\
+\begin{spacing}{1.5}
+$(Zp^*,\times)$が群の構造を持つことを示せ。\\
+（$ax+py=gcd(a,p)$を満たすｘとｙの存在は使用可）\\
+\hrule
+~\\
+証明：\\
+(1)閉じている\\
+(2)結合法則適用できる:$a\times (b\times c)=(a\times b)\times c$\\
+(3)単位元、逆元が存在する\\
+
+(1)：\\
+$a,b\in Z_p^*$, \ よって, \ $a\times b(modp)\in Z_p^*$\\
+$a\times b(modp)=0$とすると\\
+$a\times b=kp$\\
+よって$\dfrac{a\times b}{p}=k$(kは整数)\\
+ｐは素数とすると、ｋは整数の可能性がない\\
+よって$a\times b(modp)\neq 0$\\
+
+(2)：\\
+$a,b,c\in Z_p^*$\\
+$a\times (b\times c)=(a\times b)\times c$が成り立つ\\
+
+(3)：\\
+$Z_p^*={1,2,...,p-1}$\\
+だから１を含むaが単位元がある\\
+$a\in Z_p^*$、$ax+py=gcd(a,p)$を成立できるx,yには：\\
+$ax+py=1$\\
+$(ax+py)(modp)=1(modp)$\\
+$ax(modp)+py(modp)=1$\\
+よって：$ax(modp)=1$\\
+となる$x=a^-1$が成り立つ、逆元はある\\
+
+(1)(2)(3)によって、$(Zp^*,\times)$が群の構造を持
+
+\subsection{}
+1-1を用いて、フェルマーの小定理\\
+$a^{p-1}(modp)=1$(aはZp*の任意の要素）\\
+を示せ。\\
+\hrule
+~\\
+{1,2,3...,p-1}を{a,2a,3a,...(p-1a)}と見る\\
+よって: \ $1a\times 2a\times ...\times (p-1)a\equiv 1\times 2\times ...\times (p-1)(modp)$\\
+ここで：$1\times 2\times ...\times (p-1)$の逆元を上の式に掛けると：\\
+$a^{p-1}=1(modp)$\\
+
+\end{spacing}
+
+\section{課題２}
+\subsection{}
+\begin{spacing}{1.5}
+
+p=7, q=13で公開鍵eと秘密鍵dを設定せよ。\\
+\hrule
+~\\
+$n=p\times q=7\times 13=91$\\
+$\lambda=lcm(p-1,q-1)=lcm(6,12)=12$\\
+$gcd(d,\lambda)=1, d=5,7,11$\\
+ここで$d=5$を取る:\\
+$ed\equiv 1(mod\lambda), e=5$\\
+したがって、$e=5, d=5$\\
+
+\subsection{}
+
+コーディングを以下とする: \\
+$a=1,b=2,...,z=26, A=27,B=28,...,Z=52, 0=60,1=61,...,9=69$ \\
+(A) kit を送受信せよ。 \\
+(B) 各人のイニシャル2文字を送受信せよ。 \\
+(C) 学生番号の下４桁を送受信せよ。 \\
+\hrule
+~\\
+(A)：\\
+送信：\\
+$k=11, i=9, t=20, e=5, n=91, q=5$\\
+$x=11,9,20$\\
+$x_k=11:\ c_k=x^e(modn)=72$\\
+$x_i=9:\ c_i=x^e(modn)=81$\\
+$x_t=20:\ c_t=x^e(modn)=76$\\
+したがって、$c=72,81,76$\\
+受信：\\
+$c_k=72:\ x_k=c^d(modn)=11$\\
+$c_i=81:\ x_i=c^d(modn)=9$\\
+$c_t=76:\ x_t=c^d(modn)=20$\\
+したがって、$x=11,9,20$\\
+\\
+(B)：\\
+名前は"Buwei SHEN"なので、イニシャル2文字は"BS"\\
+送信：\\
+$B=28, S=45$\\
+$x=28,45$\\
+$x_B=28:\ c_k=x^e(modn)=84$\\
+$x_S=45:\ c_i=x^e(modn)=54$\\
+したがって、$c=84,54$\\
+受信：\\
+$c_B=84:\ x_B=c^d(modn)=28$\\
+$c_S=54:\ x_S=c^d(modn)=45$\\
+したがって、$x=28,45$\\
+\\
+(C)：\\
+学籍番号は"16344229"なので、下４桁は"4229"\\
+送信：\\
+$"4"=64, "2"=62, "9"=69$\\
+$x=64,62,62,69$\\
+$x_4=64:\ c_4=x^e(modn)=64$\\
+$x_2=62:\ c_2=x^e(modn)=69$\\
+$x_2=62:\ c_2=x^e(modn)=69$\\
+$x_9=69:\ c_9=x^e(modn)=62$\\
+したがって、$c=64,69,69,62$\\
+受信：\\
+$c_4=64:\ x_4=c^d(modn)=64$\\
+$c_2=69:\ x_2=c^d(modn)=62$\\
+$c_2=69:\ x_2=c^d(modn)=62$\\
+$c_9=62:\ x_9=c^d(modn)=69$\\
+したがって、$x=64,62,62,69$\\
+\end{spacing}
+
+\end{CJK}
+\end{document}

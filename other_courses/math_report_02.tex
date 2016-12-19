@@ -1,0 +1,137 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{CJK}
+\usepackage{setspace}
+\usepackage{anysize}
+\marginsize{2cm}{2cm}{2cm}{2cm}
+
+\begin{CJK}{UTF8}{min}
+
+\author{}
+  \title{計算数学特論　第２回　レポート}
+  \date{\today}
+
+\begin{document}
+  \maketitle
+
+\begin{spacing}{1.5}
+\section{課題１}エルガーマル\\
+p=23の場合に原子元aを設定し、ｘとｋを与え、送信文字５がどのように暗号化され、どのように複合化されるかシミュレーションせよ。\\
+\hrule
+~\\
+\textcircled{1}　原始元を探す:\\
+$p-1=22$\\
+22の約数は2と11だけ\\
+$[1,22]$のなか、$a^2$と$a^{11}(modq)\neq 1$の数は$5,7,...,etc$\\
+ここで$a=5$を取る\\
+
+\begin{table}[!hbp]
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+  &   &   &   & \\
+$5^1(modp)=5$ & $5^2(modp)=2$ & $5^3(modp)=10$ & $5^4(modp)=4$ & $5^5(modp)=20$ \\
+  &   &   &   & \\
+\hline
+  &   &   &   & \\
+$5^6(modp)=8$ & $5^7(modp)=17$ & $5^8(modp)=16$ & $5^9(modp)=11$ & $5^{10}(modp)=9$ \\
+  &   &   &   & \\
+\hline
+  &   &   &   & \\
+$5^{11}(modp)=22$ & $5^{12}(modp)=18$ & $5^{13}(modp)=21$ & $5^{14}(modp)=13$ & $5^{15}(modp)=19$ \\
+  &   &  &  & \\
+\hline
+  &   &   &   & \\
+$5^{16}(modp)=3$ & $5^{17}(modp)=15$ & $5^{18}(modp)=6$ & $5^{19}(modp)=7$ & $5^{20}(modp)=12$ \\
+  &   &   &   & \\
+\hline
+  &   &   &   & \\
+$5^{21}(modp)=14$ & $5^{22}(modp)=1$ &   \  &   \  &   \  \\
+  &   &   &   & \\
+\hline
+\end{tabular}
+\end{table}
+~\\
+\textcircled{2}　秘密鍵と公開鍵の計算\\
+秘密鍵：$x\in (1,p-1)$,　をランダム選択できる、ここで３を選びます\\
+公開鍵：$g=5$, \ $p=23$, \ $y=g^x(modp)=5^3(mod23)=10$\\
+\textcircled{3}　暗号化\\
+送信文字$M=5$\\
+$k\in (1,p-1)$,　をランダム選択できる、ここで7を選びます\\
+$C_1=g^k(modp)=5^7(mod23)=17$\\
+$C_2=My^k(modp)=(5\times 10^7)mod23=1$\\
+したがって、暗号文$(C_1,C_2)=(17,1)$
+\textcircled{3}　復号化\\
+$M=C_2C_1^{-x}(modp)=C_2(C_1^x$の逆元$)(modp)$
+$=1\times 17^19(mod23)=5$
+
+\section{課題２}\\
+(1) p=23の原始元を全部求めよ。\\
+(2) 原子元α、乱数a、bを与えて共有鍵を持てることを確認せよ。（３通りの場合を考えること。）\\
+\hrule
+~\\
+\textcircled{1}　p=23の原始元を全部求めよ。\\
+\begin{table}[!hbp]
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+  &   &   &   &  & \\
+$2^2(modp)=4$ & $3^2(modp)=9$ & $4^2(modp)=16$ & $5^2(modp)=2$ & $6^2(modp)=13$ & $7^2(modp)=3$ \\
+  &   &   &   &  & \\
+\hline
+  &   &   &   &  & \\
+$2^{11}(modp)=1$ & $3^{11}(modp)=1$ & $4^{11}(modp)=1$ & $5^{11}(modp)=22$ & $6^{11}(modp)=1$ & $7^{11}(modp)=22$ \\
+  &   &   &   &  & \\
+\hline
+\hline
+  &   &   &   &  & \\
+$8^2(modp)=18$  & $9^2(modp)=12$ & $10^2(modp)=8$ & $11^2(modp)=6$ & $12^2(modp)=6$ & $13^2(modp)=8$\\
+ &   &   &   &  & \\
+\hline
+ &   &   &   &  & \\
+$8^{11}(modp)=1$  & $9^{11}(modp)=1$ & $10^{11}(modp)=22$ & $11^{11}(modp)=22$ & $12^{11}(modp)=1$ & $13^{11}(modp)=1$\\
+ &   &   &   &  & \\
+\hline
+\hline
+ &   &   &   &  & \\
+$14^2(modp)=12$  & $15^2(modp)=18$ & $16^2(modp)=3$ & $17^2(modp)=13$ & $18^2(modp)=2$ & $19^2(modp)=16$\\
+ &   &   &   &  & \\
+\hline
+ &   &   &   &  & \\
+$14^{11}(modp)=22$  & $15^{11}(modp)=22$ & $16^{11}(modp)=1$ & $17^{11}(modp)=22$ & $18^{11}(modp)=1$ & $19^{11}(modp)=22$\\
+ &   &   &   &  & \\
+\hline
+\hline
+ &   &   &   &  & \\
+$20^{11}(modp)=9$  & $21^{11}(modp)=4$ & $22^{11}(modp)=1$ &  &  & \\
+&   &   &   &  & \\
+\hline
+&   &   &   &  & \\
+$20^{11}(modp)=22$  & $21^{11}(modp)=22$ & $22^{11}(modp)=22$ &  &  & \\
+&   &   &   &  & \\
+\hline
+\end{tabular}
+\end{table}
+~\\
+よって、$p=23$の原始元は${5,7,10,11,14,15,17,19,20,21}$\\
+~\\
+\textcircled{2}　原子元α、乱数a、bを与えて共有鍵を持てることを確認せよ。（３通りの場合を考えること。）\\
+$a=3, b=9$
+原子元αを5,7,11を取る\\　\\
+$\alpha$が$5$を取る時:\\
+$\alpha^a(modp)=5^3(mod23)=10, \alpha^b(modp)=5^9(mod23)=11$\\
+共有鍵：$(\alpha^a)^b(modp)=(\alpha^b)^a(modp)=10^9(mod23)=11^3(mod23)=20$\\　\\
+$\alpha$が$7$を取る時:\\
+$\alpha^a(modp)=7^3(mod23)=21, \alpha^b(modp)=7^9(mod23)=15$\\
+共有鍵：$(\alpha^a)^b(modp)=(\alpha^b)^a(modp)=21^9(mod23)=15^3(mod23)=17$\\　\\
+$\alpha$が$11$を取る時:\\
+$\alpha^a(modp)=5^3(mod23)=20, \alpha^b(modp)=5^9(mod23)=19$\\
+共有鍵：$(\alpha^a)^b(modp)=(\alpha^b)^a(modp)=20^9(mod23)=19^3(mod23)=5$\\　\\
+
+
+
+
+\end{spacing}
+
+
+
+\end{CJK}
+\end{document}

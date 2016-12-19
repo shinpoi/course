@@ -1,0 +1,24 @@
+# latex
+*.aux
+*.dvi
+*.pdf
+*.log
+
+# R
+*.RData
+*.Rhistory
+
+# python
+*.xml
+*.iml
+__pycache__
+.idea
+
+# other
+*.png
+*.jpg
+*.bmp
+
+# special
+*.txt
+*.gz

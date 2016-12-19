@@ -1,0 +1,31 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{CJK}
+\begin{CJK}{UTF8}{min}
+
+\author{}
+  \title{確率システム制御特論　第４回　演習問題}
+  \date{\today}
+
+\begin{document}
+  \maketitle
+
+\section{問題 １}
+問題：ベイズの定理の証明をせよ\\ \\
+既知：\\
+条件付き確率の定義によって：\\
+$$ P(A,B)=P(B|A)P(A)=P(A|B)P(B) \eqno{(1-1)}$$
+式$(1-1)$が以下のように変形できます：\\
+$$ P(A|B)=\dfrac{P(B|A)P(A)}{P(B)} \eqno{(1-2)}$$
+式$(1-2)$はベイズの定理の公式なので、証明完了です\\
+
+\section{問題 ２}
+\begin{equation} e^{-(x_\alpha-\mu)^2/2\sigma^2} \end{equation}
+\begin{equation} e^{\sum_{\alpha=1}^{N}-(x_\alpha-\mu)^2/2\sigma^2} \end{equation}
+\begin{equation} (x_\alpha-\mu)^2 \end{equation}
+\begin{equation} -\dfrac{1}{2\sigma^4}\sum_{\alpha=1}^{N}(x_\alpha-\mu)^2+\dfrac{N}{2\sigma^2} \end{equation}
+\begin{equation} \dfrac{1}{N}\sum_{\alpha=1}^{N}x_\alpha \end{equation}
+\begin{equation} \dfrac{1}{N}\sum_{\alpha=1}^{N}(x_\alpha-\bar{\mu})^2 \end{equation}
+
+\end{CJK}
+\end{document}
