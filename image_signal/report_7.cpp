@@ -57,11 +57,22 @@ int *expand_size(float R[2][2], int x, int y){
 int main(int argc, char** argv){
   int i,j;
   // power of expand
-  int power = 2;
+  int power = 10;
 
   // read original image
-  Mat img;
+  Mat img, img_color;
+  Mat img_R, img_G, img_B;
+  vector<Mat> channels;
+
   img = imread("tokyoskytree.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+  img_color = imread("tokyoskytree.jpg");
+
+  // split image
+  split(img_color,channels);
+  img_R = channels.at(0);
+  img_G = channels.at(1);
+  img_B = channels.at(2);
+
 
   // rotation angle
   double theta = -M_PI/6;
@@ -74,11 +85,13 @@ int main(int argc, char** argv){
 
   // calculate size of rotation image
   int *rotation_size = expand_size(R_ro, img.rows, img.cols);
-  Mat img_rotation(rotation_size[0], rotation_size[1], CV_8U);
+  Mat img_rotation_R(rotation_size[0], rotation_size[1], CV_8U);
+  Mat img_rotation_G(rotation_size[0], rotation_size[1], CV_8U);
+  Mat img_rotation_B(rotation_size[0], rotation_size[1], CV_8U);
 
   // rotate image
-  for(i=0; i<img_rotation.rows; i++)
-    for(j=0; j<img_rotation.cols; j++){
+  for(i=0; i<rotation_size[0]; i++)
+    for(j=0; j<rotation_size[1]; j++){
       int co[2] = {i + rotation_size[2], j + rotation_size[3]};
       int *co_ = mat2x2(R_ro_inv, co);
       if ((co_[0] < 0) or (co_[1] < 0))
@@ -86,35 +99,47 @@ int main(int argc, char** argv){
       if ((co_[0] > img.rows) or (co_[1] > img.cols))
         continue;
 
-      img_rotation.at<unsigned char>(i,j) = img.at<unsigned char>(co_[0],co_[1]);
+      img_rotation_R.at<unsigned char>(i,j) = img_R.at<unsigned char>(co_[0],co_[1]);
+      img_rotation_G.at<unsigned char>(i,j) = img_G.at<unsigned char>(co_[0],co_[1]);
+      img_rotation_B.at<unsigned char>(i,j) = img_B.at<unsigned char>(co_[0],co_[1]);
     }
 
   // calculate size of expanded image
-  int *exp_size = expand_size(R_expand, img_rotation.rows, img_rotation.cols);
-  Mat img_expand(exp_size[0], exp_size[1], CV_8U);
+  int *exp_size = expand_size(R_expand, img_rotation_R.rows, img_rotation_R.cols);
+  Mat img_expand_R(exp_size[0], exp_size[1], CV_8U);
+  Mat img_expand_G(exp_size[0], exp_size[1], CV_8U);
+  Mat img_expand_B(exp_size[0], exp_size[1], CV_8U);
+  Mat img_expand_color(exp_size[0], exp_size[1],CV_8UC3);
+  channels.at(0) = img_expand_R;
+  channels.at(1) = img_expand_G;
+  channels.at(2) = img_expand_B;
 
   // expand image
-  for(i=0; i<img_expand.rows; i++)
-    for(j=0; j<img_expand.cols; j++){
+  for(i=0; i<img_expand_R.rows; i++)
+    for(j=0; j<img_expand_R.cols; j++){
       int co[2] = {i, j};
       int *co_ = mat2x2(R_expand_inv, co);
       if ((co_[0] < 0) or (co_[1] < 0))
         continue;
-      if ((co_[0] > img_rotation.rows) or (co_[1] > img_rotation.cols))
+      if ((co_[0] > img_rotation_R.rows) or (co_[1] > img_rotation_R.cols))
         continue;
 
-      img_expand.at<unsigned char>(i,j) = img_rotation.at<unsigned char>(co_[0],co_[1]);
+      img_expand_R.at<unsigned char>(i,j) = img_rotation_R.at<unsigned char>(co_[0],co_[1]);
+      img_expand_G.at<unsigned char>(i,j) = img_rotation_G.at<unsigned char>(co_[0],co_[1]);
+      img_expand_B.at<unsigned char>(i,j) = img_rotation_B.at<unsigned char>(co_[0],co_[1]);
     }
+
+  merge(channels, img_expand_color);
+
+  // save image
+  imwrite("result.jpg", img_expand_color);
 
   // show image
   namedWindow("Original", WINDOW_AUTOSIZE);
-  imshow("Original", img);
-
-  namedWindow("Trans", WINDOW_AUTOSIZE);
-  imshow("Trans", img_rotation);
+  imshow("Original", img_color);
 
   namedWindow("Expand", WINDOW_AUTOSIZE);
-  imshow("Expand", img_expand);
+  imshow("Expand", img_expand_color);
 
   waitKey(0);
   return 0;
