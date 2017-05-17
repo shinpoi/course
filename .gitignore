@@ -22,5 +22,6 @@ __pycache__
 
 # special
 *.txt
+*.html
 *.gz
 *.zip
