@@ -2,6 +2,7 @@
 
 #include <omplapp/apps/SE3RigidBodyPlanning.h>
 #include <omplapp/config.h>
+#include "env_set.h"
 
 using namespace ompl;
 
@@ -10,22 +11,22 @@ int main(){
 	//std::string robot_fname = "/home/shin-u16/tools/omplapp-1.3.1-Source/resources/3D/Easy_robot.dae";
 	//std::string env_fname = "/home/shin-u16/tools/omplapp-1.3.1-Source/resources/3D/Easy_env.dae";
 	
-	std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/3D/Easy_robot.dae";
-	std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + "/3D/Easy_env.dae";
+	std::string robot_fname = std::string(OMPLAPP_RESOURCE_DIR) + std::string(ENV);
+	std::string env_fname = std::string(OMPLAPP_RESOURCE_DIR) + std::string(ROBOT);
 
 	setup.setRobotMesh(robot_fname);
 	setup.setEnvironmentMesh(env_fname);
 
 	base::ScopedState<base::SE3StateSpace> start(setup.getSpaceInformation());
-	start->setX(270.00);
-	start->setY(50.00);
-	start->setZ(0.00);
+	start->setX(START_X);
+	start->setY(START_Y);
+	start->setZ(START_Z);
 	start->rotation().setIdentity();
 
 	base::ScopedState<base::SE3StateSpace> goal(start);
-	goal->setX(270.00);
-	goal->setY(300.00);
-	goal->setZ(-400.00);
+	goal->setX(END_X);
+	goal->setY(END_Y);
+	goal->setZ(END_Z);
 	goal->rotation().setIdentity();
 
 	setup.setStartAndGoalStates(start, goal);
