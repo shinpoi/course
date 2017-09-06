@@ -31,10 +31,7 @@ def histogram_matching(srcArr, dstArr, srcPNG=False):
 
     for i in range(srcArr.shape[0]):
         for j in range(srcArr.shape[1]):
-            if srcArr[i, j] == 0:
-                continue
-            else:
-                srcArr[i, j] = HistMap[srcArr[i, j]]
+            srcArr[i, j] = HistMap[srcArr[i, j]]
     return srcArr
 
 def hm_color(srcArr, dstArr, srcPNG=False):
