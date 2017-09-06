@@ -34,8 +34,9 @@ def histogram_matching(srcArr, dstArr, srcPNG=False):
             srcArr[i, j] = HistMap[srcArr[i, j]]
     return srcArr
 
-def hm_color(srcArr, dstArr, srcPNG=False):
-    srcArr = srcArr.copy()
+def hm_color(srcName, dstName, srcPNG=False):
+    srcArr = cv2.imread(srcName)
+    dstArr = cv2.imread(dstName)
     for i in range(3):
         srcArr[:,:,i] = histogram_matching(srcArr[:,:,i], dstArr[:,:,i], srcPNG=srcPNG)
     return srcArr
@@ -43,9 +44,6 @@ def hm_color(srcArr, dstArr, srcPNG=False):
 
 """
 # example
-a = cv2.imread("a.png")
-b = cv2.imread("b.png")
-c = hm_color(a, b)
-
+c = hm_color("a.png", "b.png")
 cv2.imwrite("c.png", c)
 """
