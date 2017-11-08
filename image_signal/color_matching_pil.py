@@ -52,4 +52,19 @@ def hm_color(srcName, dstName, srcPNG=False):
 # example
 img = Image.fromarray(hm_color("a.bmp", "b.jpg"))
 img.save("c.png")
-"""
+'''
+
+##############
+def hist_exchange(srcArr, dstArr):
+    shape = srcArr.shape
+    srcArr = srcArr.reshape(-1)
+    dstArr = dstArr.reshape(-1)
+    dstArr.sort()
+    index = np.arange(0, srcArr.shape[0], 1)
+    enume = np.zeros((srcArr.shape[0], 2), dtype=np.int32)
+    enume[:, 0] = srcArr
+    enume[:, 1] = index
+    enume = enume[enume[:,0].argsort()]
+    enume[:, 0] = dstArr
+    enume = enume[enume[:,1].argsort()]
+    return enume[:, 0].reshape(shape)
