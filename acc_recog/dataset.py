@@ -1,3 +1,6 @@
+# - coding: utf-8 -*-
+# python 3.5
+
 import os
 import csv
 import re
@@ -15,8 +18,8 @@ PRE_NUM_OF_SAMPLE = 7000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
-act_dict = {'stay':1, 'walk':2, 'jog':3, 'skip':4, 'stUp':5, 'stDown':6}  # act_dict['void'] -> KeyError
-rev_act_dict = {1:'stay', 2:'walk', 3:'jog', 4:'skip', 5:'stUp', 6:'stDown'}
+act_dict = {'stay':0, 'walk':1, 'jog':2, 'skip':3, 'stUp':4, 'stDown':5}  # act_dict['void'] -> KeyError
+rev_act_dict = {0:'stay', 1:'walk', 2:'jog', 3:'skip', 4:'stUp', 5:'stDown'}
 
 # <Parameter> spectrogram
 frame_length = MAX_LENGTH  # 2200
@@ -80,17 +83,39 @@ def spectrogram(array, channel=3):
             frame = arr[start: start + nfft]
             windowed = window * frame
             res = np.fft.rfft(windowed)
-            res_end = np.log(np.abs(res) ** 2)
+            res_end = np.log(np.abs(res) ** 2 + 1e0)  # prevent log([0, 0, ..., 0])
             data[i, :, ch] = res_end
             start += overlap
-            print(ch, res_end)
+            # print(i, ch, res_end)
     return data
 
 def plot_spectrogram(arr, name='image.png'):
-    arr = np.array(arr, dtype=np.uint8)
+    arr += np.min(arr)
+    arr = np.array((arr/np.max(arr))*255, dtype=np.uint8)
     img = Image.fromarray(arr)
     img.save(name)
 
+
+def muilt_plot(act):
+    b_img = np.zeros((147, 264, 3), dtype=np.uint8)+255
+    n = 0
+    i = 0
+    col = row = 0
+    while (n<12):
+        if act in f_list[i]: 
+            print(n)
+            img = cv2.imread("./sepc/"+f_list[i])
+            i += 1
+            n += 1
+            if (row >= 4):
+                row = 0
+                col += 1
+            b_img[(col*49):(col*49 + 39), (row*66):(row*66+56)] = img
+            row += 1
+        else:
+            i += 1
+    cv2.imwrite(act + ".png", b_img)
+    
 
 ########################################
 # run
@@ -115,12 +140,18 @@ try:
 except FileExistsError:
     pass
 
+spec_shape = spectrogram(dataset[0]).shape
+spec_dataset = np.zeros((len(dataset), spec_shape[2], spec_shape[0], spec_shape[1]), dtype=np.float32)
+
 for i in range(len(dataset)):
     spec_arr = spectrogram(dataset[i])
-    plot_spectrogram(spec_arr, (save_root + str(dataflag[i, 0]) + '_' + rev_act_dict[dataflag[i, 1]] + '.png'))
+    spec_dataset[i] = spec_arr.transpose((2, 0, 1))
+    # plot_spectrogram(spec_arr, (save_root + str(dataflag[i, 0]) + '_' + rev_act_dict[dataflag[i, 1]] + '.png'))
     if i % 100 == 0:
         logging.debug("spectrogram: %d" % i)
 
+np.save('spec_dataset.npy', spec_dataset)
+logging.info("spec_dataset have saved")
 
 """
 # plot
