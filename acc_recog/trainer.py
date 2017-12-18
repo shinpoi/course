@@ -103,17 +103,28 @@ for j in range(epoch):
             with using_config('train', False):
                 yt = model(xt)
         loss_test = F.softmax_cross_entropy(yt, y_test).data
-        logging.info("loop(test): %d, loss = %f" % (j, loss_test))
+        logging.info("test: loss = %f" % loss_test)
         ans = yt.data
         nrow, ncol = ans.shape
         acc = 0
-        
+        """
+        # print probability
+        anss = F.softmax(ans)
+        for i in range(nrow):
+            print("ans[%d]: " % i, anss[i])
+        """
         for i in range(nrow):
             cls = int(np.argmax(ans[i]))  # one hot -> int
             if cls == y_test[i]:
                 acc += 1
         print("accurate: %d/%d = %f" % (acc, y_test.shape[0], acc/y_test.shape[0]))
 
+        if j%100 == 0:
+            rate = round(0.001*((epoch-j)/epoch), 6)
+            if not rate:
+                rate = 0.000001
+            optimizer.alpha = rate
+            logging.debug("change alpha to %f" % rate)
 
         if j%500 == 0:
             logging.info('save model at epoch: %d' % j)
