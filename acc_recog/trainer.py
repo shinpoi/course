@@ -91,7 +91,7 @@ class Model(Object):
             logging.debug("loop: %d, loss = %f" % (j, loss_sum))
 
             if j % 10 == 0:
-                self.evaluated(self.model)
+                self.evaluate(self.model)
 
             # update learning rate
             if j%100 == 0:
@@ -110,11 +110,13 @@ class Model(Object):
             with using_config('train', False):
                 return self.model(Vx)
 
-    def evaluated(self, true_yt=self.y_test):
+    def evaluate(self, true_yt=self.y_test, rt=False):
         yt = self.predict()
         loss_test = F.softmax_cross_entropy(yt, true_yt).data
         logging.info("test: loss = %f" % loss_test)
         ans = yt.data
+        if rt:
+            return ans
         nrow, ncol = ans.shape
         acc = 0
         """
