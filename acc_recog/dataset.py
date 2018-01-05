@@ -17,8 +17,8 @@ PRE_NUM_OF_SAMPLE = 7000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
-act_dict = {'stay':0, 'walk':1, 'jog':2, 'skip':3, 'stUp':4, 'stDown':5, 'sequence':-1}  # act_dict['void'] -> KeyError
-rev_act_dict = {0:'stay', 1:'walk', 2:'jog', 3:'skip', 4:'stUp', 5:'stDown', -1:'sequence'}
+act_dict = {'stay':0, 'walk':1, 'jog':2, 'skip':3, 'stUp':4, 'stDown':5, 'stup':4, 'stdown':5, 'start':6, 'sequence':-1}  # act_dict['void'] -> KeyError
+rev_act_dict = {0:'stay', 1:'walk', 2:'jog', 3:'skip', 4:'stUp', 5:'stDown', 6:'start', -1:'sequence'}
 
 # <Parameter> spectrogram
 frame_length = MAX_LENGTH  # 2200
@@ -31,6 +31,13 @@ spec_col = int(nfft/2 + 1)  # 110/2 + 1 = 56
 sepc_channel = 3  # x, y, z
 
 
+def float_(x):
+    try:
+        return float(x)
+    except TypeError:
+        return 0
+
+
 def getact(root, num, p_act=re.compile('Activity: ([a-zA-z]+)'), **argd):
     with open(root + 'HASC%s.meta' % num) as f:
         meta = f.read()
@@ -39,22 +46,70 @@ def getact(root, num, p_act=re.compile('Activity: ([a-zA-z]+)'), **argd):
 
 def readacc(root, num, **argd):
     with open(root + 'HASC%s-acc.csv' % num) as f:
-        li = [x for x in csv.reader(f)]  # format: [time, x, y, z]
+        li = [x[1:] for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
         length = len(li)
     if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
-        dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
-        dataset_single[:, 1:] += np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
+        dataset_single = np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
         dataset_single[:length] += np.array(li, dtype=np.float64)
         return dataset_single
     else:
         return None
 
 
+def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.[0-9]+E[0-9]?)?,([a-zA-Z]+)'), **argd):
+    with open(root + 'HASC%s-acc.csv' % num) as f:
+        li = [x for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
+        length = len(li)
+    with open(root + 'HASC%s.label' % num) as f:
+        flag_list = []
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            res = p_label.match(line)
+            if not res:
+                continue
+            try:
+                flag_list.append([float_(res.group(1)), float_(res.group(2)), act_dict[res.group(3)]])
+            except KeyError:
+                try:
+                    flag_list.append([float_(res.group(1)), float_(res.group(2)), act_dict[res.group(3).lower()]])
+                except KeyError:
+                    print(root + 'HASC%s.label' % num)
+                    print([res.group(1), res.group(2), res.group(3)])
+                    raise KeyError
+    if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
+        dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
+        dataset_single[:, 1:] += np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
+        dataset_single[:length] += np.array(li, dtype=np.float64)
+        i = j = k = 0
+        while True:
+            try:
+                if dataset_single[k, 0] > flag_list[i][j]:
+                    flag_list[i][j] = k
+                    if j == 1:
+                        i +=1
+                        j = 0
+                    else:
+                        j = 1
+                k += 1
+            except IndexError:
+                # print('break in (i,j,k) = ', (i, j, k))
+                break
+        argd['dataflag'].append(flag_list)
+        return dataset_single[:, 1:]
+    else:
+        return None
+
+
 # read csv and dump to arr
-def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, p_num=re.compile('HASC([0-9]+).meta')):
+def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, seq=False, p_num=re.compile('HASC([0-9]+).meta')):
     n = 0
-    dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, 4), dtype=np.float64)  # shape: (7000, 2200, 3)
-    dataflag = np.zeros((PRE_NUM_OF_SAMPLE, 2), dtype=np.int32)  # shape: (7000, 2)
+    dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, 3), dtype=np.float64)  # shape: (7000, 2200, 3)
+    if seq:
+        dataflag = []
+    else:
+        dataflag = np.zeros((PRE_NUM_OF_SAMPLE, 2), dtype=np.int32)  # shape: (7000, 2)
 
     for root, dirs, files in os.walk(DIR):  # str, list, list
         if not root.endswith(r'/'):
@@ -64,12 +119,18 @@ def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, p_num=re.compile('HA
                 num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
                 if num:
                     num = num.group(1)
-                    argd = {'maxl':maxl, 'minl':minl}
-                    act = getact(root, num, **argd)
-                    data_single = readacc(root, num, **argd)
+                    if seq:
+                        argd = {'maxl':maxl, 'minl':minl, 'dataflag':dataflag}
+                        data_single = readacc_seq(root, num, **argd)
+                    else:
+                        argd = {'maxl':maxl, 'minl':minl}
+                        act = getact(root, num)
+                        data_single = readacc(root, num, **argd)
+
                     if data_single != None:
                         dataset[n] = data_single
-                        dataflag[n] = (num, act_dict[act])
+                        if not seq:
+                            dataflag[n] = (num, act_dict[act])
                         n += 1
                         if n % 500 == 0:
                             logging.debug("read samples: %d" % n)
@@ -90,7 +151,7 @@ def csv_len_list(DIR=DATA_DIR):
             root = root + r'/'
         if not dirs:  # at /Person-xxxx
             for f_name in files:
-                num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
+                num = p_num.search(f_name)  # p_num = /HASC([0-9]+).mta/
                 if num:
                     num = num.group(1)
                     with open(root + 'HASC%s-acc.csv' % num) as f:

@@ -35,9 +35,6 @@ class Model(Object):
         logging.info('reading dataset')
         dataset = np.load(ROOT + 'spec_dataset_e0.npy')
         dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
-        # dataset: [x, y, z],  compatible: [time, x, y, z]
-        if dataset.shape[2] > 3:
-            dataset = dataset[:, :, 1:]
         print("dataset.shape:", dataset.shape)
         length = len(dataset)
         gap = int(length*0.2)  # num of test samples
