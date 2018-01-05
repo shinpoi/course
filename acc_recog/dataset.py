@@ -10,7 +10,6 @@ import logging
 import PIL.Image as Image
 
 logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
-logging.info('init...')
 
 # <Parameter> dataset
 DATA_DIR = './'
@@ -18,8 +17,8 @@ PRE_NUM_OF_SAMPLE = 7000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
-act_dict = {'stay':0, 'walk':1, 'jog':2, 'skip':3, 'stUp':4, 'stDown':5}  # act_dict['void'] -> KeyError
-rev_act_dict = {0:'stay', 1:'walk', 2:'jog', 3:'skip', 4:'stUp', 5:'stDown'}
+act_dict = {'stay':0, 'walk':1, 'jog':2, 'skip':3, 'stUp':4, 'stDown':5, 'sequence':-1}  # act_dict['void'] -> KeyError
+rev_act_dict = {0:'stay', 1:'walk', 2:'jog', 3:'skip', 4:'stUp', 5:'stDown', -1:'sequence'}
 
 # <Parameter> spectrogram
 frame_length = MAX_LENGTH  # 2200
@@ -31,16 +30,33 @@ sepc_row = int((frame_length - nfft)/overlap + 1)  # (2200 - 110)/55 + 1 = 39
 spec_col = int(nfft/2 + 1)  # 110/2 + 1 = 56
 sepc_channel = 3  # x, y, z
 
-# read csv and dump to arr
-def csv2arr():
-    n = 0
-    p_num = re.compile('HASC([0-9]+).meta')
-    p_act = re.compile('Activity: ([a-zA-z]+)')
 
-    dataset = np.zeros((PRE_NUM_OF_SAMPLE, MAX_LENGTH, 3), dtype=np.float64)  # shape: (7000, 2200, 3)
+def getact(root, num, p_act=re.compile('Activity: ([a-zA-z]+)'), **argd):
+    with open(root + 'HASC%s.meta' % num) as f:
+        meta = f.read()
+        return p_act.search(meta).group(1)  # p_act = /Activity: ([a-zA-z]+)/
+
+
+def readacc(root, num, **argd):
+    with open(root + 'HASC%s-acc.csv' % num) as f:
+        li = [x for x in csv.reader(f)]  # format: [time, x, y, z]
+        length = len(li)
+    if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
+        dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
+        dataset_single[:, 1:] += np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
+        dataset_single[:length] += np.array(li, dtype=np.float64)
+        return dataset_single
+    else:
+        return None
+
+
+# read csv and dump to arr
+def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, p_num=re.compile('HASC([0-9]+).meta')):
+    n = 0
+    dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, 4), dtype=np.float64)  # shape: (7000, 2200, 3)
     dataflag = np.zeros((PRE_NUM_OF_SAMPLE, 2), dtype=np.int32)  # shape: (7000, 2)
 
-    for root, dirs, files in os.walk(DATA_DIR):  # str, list, list
+    for root, dirs, files in os.walk(DIR):  # str, list, list
         if not root.endswith(r'/'):
             root = root + r'/'
         if not dirs:  # at /Person-xxxx
@@ -48,34 +64,41 @@ def csv2arr():
                 num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
                 if num:
                     num = num.group(1)
-                    with open(root + f_name) as f:
-                        meta = f.read()
-                        act = p_act.search(meta).group(1)  # p_act = /Activity: ([a-zA-z]+)/
-                    with open(root + 'HASC%s-acc.csv' % num) as f:
-                        li = [x[1:] for x in csv.reader(f)]  # format: [time, x, y, z]
-                        dataset_single = np.random.normal(0, 1e-8, MAX_LENGTH)
-                        length = len(li)
-                        """
-                        # test code
-                        if length<1500 or length>2500:
-                            print("num: %s, act: %s, length: %d" % (num, act, length))
-                        if act not in act_list:
-                            print('act: %s is not in act_list!' % act)
-                        """
-                        if length > MIN_LENGTH and length < MAX_LENGTH:
-                        # (read all) if True:
-                            dataset_single[:length] += li
-                            dataset[n] = data_arr
-                            dataflag[n] = (num, act_dict[act])
-                            n += 1
-                            del li
-                            if n % 500 == 0:
-                                logging.debug("read samples: %d" % n)
+                    argd = {'maxl':maxl, 'minl':minl}
+                    act = getact(root, num, **argd)
+                    data_single = readacc(root, num, **argd)
+                    if data_single != None:
+                        dataset[n] = data_single
+                        dataflag[n] = (num, act_dict[act])
+                        n += 1
+                        if n % 500 == 0:
+                            logging.debug("read samples: %d" % n)
 
     logging.info("%d sapmles have read" % n)
     dataset = dataset[:n]
     dataflag = dataflag[:n]
     return dataset, dataflag
+
+
+def csv_len_list(DIR=DATA_DIR):
+    len_list = []
+    n = 0
+    p_num = re.compile('HASC([0-9]+).meta')
+
+    for root, dirs, files in os.walk(DIR):  # str, list, list
+        if not root.endswith(r'/'):
+            root = root + r'/'
+        if not dirs:  # at /Person-xxxx
+            for f_name in files:
+                num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
+                if num:
+                    num = num.group(1)
+                    with open(root + 'HASC%s-acc.csv' % num) as f:
+                        li = [x[1:] for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
+                        length = len(li)
+                        len_list.append(length)
+    return len_list
+
 
 def spectrogram(array, channel=sepc_channel):
     data = np.zeros((sepc_row, spec_col, channel), dtype=np.float64)
@@ -98,7 +121,7 @@ def plot_spectrogram(arr, name='image.png'):
     arr = np.array((arr/np.max(arr))*255, dtype=np.uint8)
     img = Image.fromarray(arr)
     img.save(name)
-    
+
 
 # special custom
 def muilt_plot(act):
