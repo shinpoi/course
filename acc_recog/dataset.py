@@ -76,9 +76,7 @@ def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.
                     flag_list.append([float_(res.group(1)), float_(res.group(2)), act_dict[res.group(3).lower()]])
                 except KeyError:
                     print(root + 'HASC%s.label' % num)
-                    print([res.group(1), res.group(2), res.group(3)])
-                    raise KeyError
-    if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
+                    print([res.group(1), res.group(2)]:   # (read all) if True:
         dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
         dataset_single[:, 1:] += np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
         dataset_single[:length] += np.array(li, dtype=np.float64)
@@ -178,7 +176,8 @@ def spectrogram(array, channel=sepc_channel):
     return data
 
 def plot_spectrogram(arr, name='image.png'):
-    arr += np.min(arr)
+    avg = np.average(arr)
+    arr += np.min((avg - np.min(arr), np.max(arr) - avg))
     arr = np.array((arr/np.max(arr))*255, dtype=np.uint8)
     img = Image.fromarray(arr)
     img.save(name)
@@ -206,6 +205,27 @@ def muilt_plot(act):
     cv2.imwrite(act + ".png", b_img)
 
 
+def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #seq_arr.shape = (n, range(3w~4w), channel)
+    n_or = seq_arr.shape[0]
+    rng = seq_arr.shape[1]
+    n_data = int((rng - MAX_LENGTH)/overlap)
+
+    spec_shape = spectrogram(seq_arr[0, :MAX_LENGTH]).shape
+    data_shape = [i for i in spec_shape]
+    data_shape.insert(0, n_data)
+    data_shape.insert(0, n_or)
+    data = np.zeros(data_shape, dtype=np.float64)
+    for i in range(n_or):
+        for j in range(n_data):
+            data[i, j] = spectrogram(seq_arr[i, overlap*j:(overlap*j + MAX_LENGTH))
+    if plot:
+        logging.info("seq2specblock(): plot...")
+        for i in range(n_or):
+            for j in range(n_data):
+                plot_spectrogram(data[i, j], name=(plot_save_root+"%d_%d.png" % (i, j)))
+    return data
+
+
 ########################################
 if __name__ == '__main__':
     # read dataset
@@ -221,13 +241,13 @@ if __name__ == '__main__':
         logging.info("dataset & dataflag have saved")
 
     # create spectrogram
+    spec_dataset = np.zeros((len(dataset), sepc_channel, sepc_row, sepc_col), dtype=np.float32)
+
     save_root = './sepc/'
     try:
         os.mkdir(save_root)
     except FileExistsError:
         pass
-
-    spec_dataset = np.zeros((len(dataset), sepc_channel, sepc_row, sepc_col), dtype=np.float32)
 
     for i in range(len(dataset)):
         spec_arr = spectrogram(dataset[i])

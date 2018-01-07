@@ -35,6 +35,9 @@ class Model(Object):
         logging.info('reading dataset')
         dataset = np.load(ROOT + 'spec_dataset_e0.npy')
         dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
+        # dataset: ,  compatible: [x, y, z]
+        if dataset.shape[2] > 3:
+            dataset = dataset[:, :, 1:]
         print("dataset.shape:", dataset.shape)
         length = len(dataset)
         gap = int(length*0.2)  # num of test samples
@@ -131,6 +134,21 @@ class Model(Object):
                 acc += 1
         print("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
 
+
+class SeqEvaluator(object):
+    def __init__(self, model, seq_sepc, flag_list, spec_length, sepc_overlap):
+        self.model = model
+        self.seq_spec = seq_spec
+        self.flag_list = flag_list
+        self.spec_length = spec_length
+        self.sepc_overlap = sepc_overlap
+
+    def get_evaluate(self):
+        pass
+        # return eva_arr
+
+    def plot(self):
+        # https://stackoverflow.com/questions/9957637/how-can-i-set-the-background-color-on-specific-areas-of-a-pyplot-figure
 
 if __name__ == '__main__':
     M = Model()
