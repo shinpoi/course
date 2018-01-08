@@ -8,7 +8,7 @@ import csv
 import logging
 from chainer import using_config, no_backprop_mode, Variable, optimizers, serializers, cuda
 import chainer.functions as F
-import model
+# import model
 
 ROOT = './'
 logging.basicConfig(level=logging.DEBUG,
@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 #################
 ## set model
+"""
 logging.info('setting model')
 
 model = model.TINY_D()  # input: x, output: one hot y
@@ -27,7 +28,7 @@ model.to_gpu(0)
 xp = cuda.cupy
 
 logging.info('GPU used')
-
+"""r
 p_num = re.compile('HASC([0-9]+).label')
 p_act = re.compile('Activity: ([a-zA-z]+)')
 p_label = re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.[0-9]+E[0-9]?)?,([a-zA-Z]+)')
@@ -96,9 +97,9 @@ def seq2arrs(seq_arr):
     """
     <need code>
     """
-    return spec_arrs
+    pass
 
-def predict(spec_arrs, model=model):
+def predict(spec_arrs, model):
     with no_backprop_mode():
         x = Variable(spec_arrs)
         with using_config('train', False):

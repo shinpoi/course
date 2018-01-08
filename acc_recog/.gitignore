@@ -1,5 +1,9 @@
-__pycache__
 
 *.log
 *.npy
 *.npz
+*.pkl
+
+# folder
+dataset
+__pycache__

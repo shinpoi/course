@@ -5,14 +5,15 @@ import os
 import csv
 import re
 import numpy as np
-import pylab as P
 import logging
 import PIL.Image as Image
+import pickle
 
 logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
 
 # <Parameter> dataset
-DATA_DIR = './'
+# DATA_DIR = './'
+DATA_DIR = '/home/shin-u16/document/HASC-IPSC/BasicActivity/'
 PRE_NUM_OF_SAMPLE = 7000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
@@ -26,7 +27,7 @@ nfft = int(MAX_LENGTH/20)  # 110
 overlap = int(nfft / 2)  # 55
 
 window = np.hamming(nfft)
-sepc_row = int((frame_length - nfft)/overlap + 1)  # (2200 - 110)/55 + 1 = 39
+spec_row = int((frame_length - nfft)/overlap + 1)  # (2200 - 110)/55 + 1 = 39
 spec_col = int(nfft/2 + 1)  # 110/2 + 1 = 56
 sepc_channel = 3  # x, y, z
 
@@ -49,8 +50,8 @@ def readacc(root, num, **argd):
         li = [x[1:] for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
         length = len(li)
     if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
-        dataset_single = np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
-        dataset_single[:length] += np.array(li, dtype=np.float64)
+        dataset_single = np.zeros((argd['maxl'], 3), dtype=np.float64)
+        dataset_single[:length] = np.array(li, dtype=np.float64)
         return dataset_single
     else:
         return None
@@ -76,10 +77,11 @@ def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.
                     flag_list.append([float_(res.group(1)), float_(res.group(2)), act_dict[res.group(3).lower()]])
                 except KeyError:
                     print(root + 'HASC%s.label' % num)
-                    print([res.group(1), res.group(2)]:   # (read all) if True:
+                    print([res.group(1), res.group(2)])
+
+    if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
         dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
-        dataset_single[:, 1:] += np.random.normal(0, 1e-8, argd['maxl']*3).reshape((argd['maxl'], 3))
-        dataset_single[:length] += np.array(li, dtype=np.float64)
+        dataset_single[:length] = np.array(li, dtype=np.float64)
         i = j = k = 0
         while True:
             try:
@@ -101,7 +103,7 @@ def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.
 
 
 # read csv and dump to arr
-def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, seq=False, p_num=re.compile('HASC([0-9]+).meta')):
+def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.compile('HASC([0-9]+).meta')):
     n = 0
     dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, 3), dtype=np.float64)  # shape: (7000, 2200, 3)
     if seq:
@@ -125,7 +127,7 @@ def csv2arr(DIR=DATA_DIR, maxl=MAX_LENGTH, minl=MIN_LENGTH, seq=False, p_num=re.
                         act = getact(root, num)
                         data_single = readacc(root, num, **argd)
 
-                    if data_single != None:
+                    if type(data_single) != type(None):
                         dataset[n] = data_single
                         if not seq:
                             dataflag[n] = (num, act_dict[act])
@@ -160,16 +162,16 @@ def csv_len_list(DIR=DATA_DIR):
 
 
 def spectrogram(array, channel=sepc_channel):
-    data = np.zeros((sepc_row, spec_col, channel), dtype=np.float64)
+    data = np.zeros((spec_row, spec_col, channel), dtype=np.float64)
     for ch in range(channel):
         arr = array[:, ch]
         start = 0
-        for i in range(sepc_row):
+        for i in range(spec_row):
             frame = arr[start: start + nfft]
             windowed = window * frame
             res = np.fft.rfft(windowed)
-            # res_end = np.log(np.abs(res) ** 2 + 1e0)  # prevent log([0, 0, ..., 0])
-            res_end = np.log(np.abs(res) ** 2)
+            # res_end = np.log(np.abs(res) ** 2)  # oringal
+            res_end = np.log(np.abs(res) ** 2 + 1e0)
             data[i, :, ch] = res_end
             start += overlap
             # print(i, ch, res_end)
@@ -208,20 +210,20 @@ def muilt_plot(act):
 def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #seq_arr.shape = (n, range(3w~4w), channel)
     n_or = seq_arr.shape[0]
     rng = seq_arr.shape[1]
-    n_data = int((rng - MAX_LENGTH)/overlap)
+    n_block = int((rng - MAX_LENGTH)/overlap)
 
     spec_shape = spectrogram(seq_arr[0, :MAX_LENGTH]).shape
     data_shape = [i for i in spec_shape]
-    data_shape.insert(0, n_data)
+    data_shape.insert(0, n_block)
     data_shape.insert(0, n_or)
     data = np.zeros(data_shape, dtype=np.float64)
     for i in range(n_or):
-        for j in range(n_data):
-            data[i, j] = spectrogram(seq_arr[i, overlap*j:(overlap*j + MAX_LENGTH))
+        for j in range(n_block):
+            data[i, j] = spectrogram(seq_arr[i, overlap*j:(overlap*j + MAX_LENGTH)])
     if plot:
         logging.info("seq2specblock(): plot...")
         for i in range(n_or):
-            for j in range(n_data):
+            for j in range(n_block):
                 plot_spectrogram(data[i, j], name=(plot_save_root+"%d_%d.png" % (i, j)))
     return data
 
@@ -238,10 +240,12 @@ if __name__ == '__main__':
         dataset, dataflag = csv2arr()
         np.save('dataset.npy', dataset)
         np.save('dataflag.npy', dataflag)
+        # with open('dataflag.pkl', 'wb') as f:
+        #   pickle.dump(dataflag, f)
         logging.info("dataset & dataflag have saved")
 
     # create spectrogram
-    spec_dataset = np.zeros((len(dataset), sepc_channel, sepc_row, sepc_col), dtype=np.float32)
+    spec_dataset = np.zeros((len(dataset), sepc_channel, spec_row, spec_col), dtype=np.float32)
 
     save_root = './sepc/'
     try:
@@ -254,7 +258,7 @@ if __name__ == '__main__':
         spec_dataset[i] = spec_arr.transpose((2, 0, 1))
         ### plot:
         # plot_spectrogram(spec_arr, (save_root + str(dataflag[i, 0]) + '_' + rev_act_dict[dataflag[i, 1]] + '.png'))
-        if i % 100 == 0:
+        if i % 500 == 0:
             logging.debug("spectrogram: %d" % i)
 
     np.save('spec_dataset.npy', spec_dataset)

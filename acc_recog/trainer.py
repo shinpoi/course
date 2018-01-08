@@ -13,7 +13,7 @@ import model
 #################
 ## init
 
-ROOT = './'
+ROOT = './dataset/'
 xp = cuda.cupy
 # xp = np   ### use CPU
 
@@ -30,14 +30,11 @@ formatter = logging.Formatter('[%(levelname)s]  \t%(message)s\t')
 console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
-class Model(Object):
+class Model(object):
     def __init__(self):
         logging.info('reading dataset')
-        dataset = np.load(ROOT + 'spec_dataset_e0.npy')
+        dataset = np.load(ROOT + 'spec_dataset.npy')
         dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
-        # dataset: ,  compatible: [x, y, z]
-        if dataset.shape[2] > 3:
-            dataset = dataset[:, :, 1:]
         print("dataset.shape:", dataset.shape)
         length = len(dataset)
         gap = int(length*0.2)  # num of test samples
@@ -61,14 +58,14 @@ class Model(Object):
         logging.info('setting model')
 
         self.model = model.TINY_D()  # input: x, output: one hot y
-        self.lr = 0.02  # learning rate
+        self.lr = 0.002  # learning rate
+        logging.info('start learning rate = %f' % self.lr)
         self.optimizer = optimizers.Adam(alpha=self.lr)
-        self.optimizer.setup(model)
+        self.optimizer.setup(self.model)
 
         ### to GPU
         cuda.get_device_from_id(0).use()
         self.model.to_gpu(0)
-
         logging.info('GPU used')
 
     def save_model(self, num):
@@ -76,9 +73,9 @@ class Model(Object):
         serializers.save_npz('cpu_model_%s.npz' % num, self.model)
         logging.info('Model \'cpu_model_%s.npz\' Saved' % num)
 
-    def train(self, epoch=3000, bc=32):
+    def train(self, epoch=1000, bc=32):
         n = len(self.x_train)
-        logging.info('training start')
+        logging.info('training start, epoch = 0/%d' % epoch)
         for j in range(epoch):
             # train
             loss_sum = 0
@@ -91,10 +88,10 @@ class Model(Object):
                 loss.backward()
                 self.optimizer.update()
                 loss_sum += loss.data
-            logging.debug("loop: %d, loss = %f" % (j, loss_sum))
+            logging.debug("epoch: %d, loss = %f" % (j, loss_sum))
 
             if j % 10 == 0:
-                self.evaluate(self.model)
+                self.evaluate()
 
             # update learning rate
             if j%100 == 0:
@@ -105,15 +102,20 @@ class Model(Object):
                 logging.debug("change alpha to %f" % rate)
 
             if j%500 == 0:
-                save_model(str(j))
+                self.save_model(str(j))
+        return None
 
     # return oringal output (need softmax to probability)
-    def predict(self, Vx=self.V_x_test):
+    def predict(self, Vx=None):
+        if not Vx:
+            Vx = self.V_x_test
         with no_backprop_mode():
             with using_config('train', False):
                 return self.model(Vx)
 
-    def evaluate(self, true_yt=self.y_test, rt=False):
+    def evaluate(self, true_yt=None, rt=False):
+        if not true_yt:
+            true_yt = self.y_test
         yt = self.predict()
         loss_test = F.softmax_cross_entropy(yt, true_yt).data
         logging.info("test: loss = %f" % loss_test)
@@ -130,7 +132,7 @@ class Model(Object):
         """
         for i in range(nrow):
             cls = int(np.argmax(ans[i]))  # one hot -> int
-            if cls == y_test[i]:
+            if cls == true_yt[i]:
                 acc += 1
         print("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
 
@@ -149,6 +151,7 @@ class SeqEvaluator(object):
 
     def plot(self):
         # https://stackoverflow.com/questions/9957637/how-can-i-set-the-background-color-on-specific-areas-of-a-pyplot-figure
+        pass
 
 if __name__ == '__main__':
     M = Model()
