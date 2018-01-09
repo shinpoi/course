@@ -31,29 +31,31 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 class Model(object):
-    def __init__(self):
+    def __init__(self, load_data=True):
         logging.info('reading dataset')
-        dataset = np.load(ROOT + 'spec_dataset.npy')
-        dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
-        print("dataset.shape:", dataset.shape)
-        length = len(dataset)
-        gap = int(length*0.2)  # num of test samples
-        ran_list = np.random.permutation(length)
-        self.x_train = dataset[ran_list[gap:],]
-        self.y_train = dataflag[ran_list[gap:],]
+        if load_data:
+            dataset = np.load(ROOT + 'spec_dataset.npy')
+            dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
+            print("dataset.shape:", dataset.shape)
+            length = len(dataset)
+            gap = int(length*0.2)  # num of test samples
+            ran_list = np.random.permutation(length)
+            self.x_train = dataset[ran_list[gap:],]
+            self.y_train = dataflag[ran_list[gap:],]
 
-        self.x_test = xp.array(dataset[ran_list[:gap],])
-        self.y_test = xp.array(dataflag[ran_list[:gap],])
-        self.V_x_test = Variable(self.x_test)
+            self.x_test = xp.array(dataset[ran_list[:gap],])
+            self.y_test = xp.array(dataflag[ran_list[:gap],])
+            self.V_x_test = Variable(self.x_test)
 
-        # x_train = dataset[ran_list,]  # test-data included
-        # y_train = dataflag[ran_list,]  # test-data included
-
-        ### confirm
-        print("x_train.shape: ", self.x_train.shape)
-        print("x_test.shape: ", self.x_test.shape)
-        print("y_train.shape: ", self.y_train.shape)
-        print("y_test.shape: ", self.y_test.shape)
+            # x_train = dataset[ran_list,]  # test-data included
+            # y_train = dataflag[ran_list,]  # test-data included
+            ### confirm
+            print("x_train.shape: ", self.x_train.shape)
+            print("x_test.shape: ", self.x_test.shape)
+            print("y_train.shape: ", self.y_train.shape)
+            print("y_test.shape: ", self.y_test.shape)
+        else:
+            self.x_train = self.y_train = self.x_test = self.y_test = self.V_x_test = None
 
         logging.info('setting model')
 
@@ -106,17 +108,16 @@ class Model(object):
         return None
 
     # return oringal output (need softmax to probability)
-    def predict(self, Vx=None):
-        if not Vx:
-            Vx = self.V_x_test
+    def predict(self, Vx):
         with no_backprop_mode():
             with using_config('train', False):
                 return self.model(Vx)
 
-    def evaluate(self, true_yt=None, rt=False):
-        if not true_yt:
+    def evaluate(self, Vx=None, rt=False):
+        if not Vx:
             true_yt = self.y_test
-        yt = self.predict()
+            Vx = self.V_x_test
+        yt = self.predict(Vx)
         loss_test = F.softmax_cross_entropy(yt, true_yt).data
         logging.info("test: loss = %f" % loss_test)
         ans = yt.data
@@ -137,24 +138,115 @@ class Model(object):
         print("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
 
 
+from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap
+import matplotlib.pyplot as plt
+import os
+import pickle as pk
+
 class SeqEvaluator(object):
-    def __init__(self, model, seq_sepc, flag_list, spec_length, sepc_overlap):
+    def __init__(self, model, seq_spec, dataflag, spec_length=MAX_LENGTH, sepc_overlap=overlap):
         self.model = model
-        self.seq_spec = seq_spec
-        self.flag_list = flag_list
+        self.seq_spec = np.array(seq_spec, dtype=xp.float32)
+        self.dataflag = dataflag
         self.spec_length = spec_length
         self.sepc_overlap = sepc_overlap
+        self.act_dict = act_dict
+        self.rev_act_dict = rev_act_dict
+        self.colors = ['red', 'orange', 'green', 'blue', 'darkviolet', 'black']
+        logging.debug("data.shape: %s" % str(self.seq_spec.shape))
+        logging.debug("len of flag: %d" % len(self.dataflag))
 
-    def get_evaluate(self):
-        pass
-        # return eva_arr
+    @staticmethod
+    def flag_temp(flag_list):
+        new_flag = []
+        for sec in flag_list:  # [[st_time, ed_time, act_code], ..., ...]
+            if sec[2] < 0 or sec[2] > 5:
+                continue
+            new_flag.append([(sec[0]-2200)/55 + 20, (sec[1]-2200)/55 + 20, sec[2]])
+        return new_flag
 
-    def plot(self):
-        # https://stackoverflow.com/questions/9957637/how-can-i-set-the-background-color-on-specific-areas-of-a-pyplot-figure
-        pass
+    def set_seq_spec(self, seq_spec):
+        self.seq_spec = None
+        self.seq_spec = np.array(seq_spec, dtype=xp.float32)
+        logging.debug("set new seq_spec, shape: %s" % str(self.seq_spec.shape))
+
+    def get_a_evaluate(self, x):
+        return F.softmax(self.model.predict(Variable(x))).data
+
+    def plot(self, eva_arr, flag_list, save_name='uname.svg'):
+        n = eva_arr.shape[0]
+        n_acr = eva_arr.shape[1]
+        plt.figure(0, figsize=(16, 9))
+        plt.xlim(0, n)
+        plt.ylim(0, 1.3)
+        plt.xlabel("time")
+        plt.ylabel("probability")
+
+        for i in range(n_acr):
+            plt.plot(range(n), eva_arr[:, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
+
+        flags = self.flag_temp(flag_list)
+        for flag in flags:
+            act = flag[2]
+            plt.axvspan(flag[0], flag[1], facecolor=self.colors[act], alpha=0.2)
+
+        plt.legend()
+        plt.savefig(save_name, dpi=150)
+        plt.close()
+
+    def eva_all(self, save_root='./plot_seq_eva/', n_st=0):
+        try:
+            os.mkdir(save_root)
+        except FileExistsError:
+            pass
+
+        n = self.seq_spec.shape[0]
+        for i in range(n):
+            eva = cuda.to_cpu(self.get_a_evaluate(xp.array(self.seq_spec[i])))
+            self.plot(eva, dataflag[i+n_st], save_name=save_root + ('%d.svg' % (i+n_st)))
+            if i % 10 == 0:
+                print("eva_all(): %d/%d" % (i, n))
+
 
 if __name__ == '__main__':
+    """
     M = Model()
     M.train()
     M.save_model('end')
     logging.info('training end')
+    """
+    model = Model(load_data=False)
+    serializers.load_npz('cpu_model_end.npz', model.model)
+    with open("./dataset/seq/dataflag.pkl", 'rb') as f:
+        dataflag = pk.load(f)
+    sp_data = np.load("./dataset/seq/seq_spec_30.npy")
+    sp_data = sp_data.transpose((0, 1, 4, 2, 3))
+    se = SeqEvaluator(model, sp_data, dataflag)
+    se.eva_all()
+
+    for i in [60, 90, 120, 150, 177]:
+        del sp_data
+        sp_data = np.load("./dataset/seq/seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
+        se.set_seq_spec(sp_data)
+        se.eva_all(n_st=(round(i/30)*30-30))
+
+
+"""
+import trainer as tr
+import numpy as np
+import pickle as pk
+from chainer import serializers, cuda
+import matplotlib.pyplot as plt
+
+xp = cuda.cupy
+model = tr.Model(load_data=False)
+serializers.load_npz('cpu_model_end.npz', model.model)
+with open("./dataset/seq/dataflag.pkl", 'rb') as f:
+    dataflag = pk.load(f)
+sp_data = np.load("./dataset/seq/seq_spec_30.npy")
+sp_data = sp_data.transpose((0, 1, 4, 2, 3))
+se = tr.SeqEvaluator(model, sp_data, sp_data)
+
+d = cuda.to_cpu(se.get_a_evaluate(xp.array(sp_data[0], dtype=xp.float32)))
+se.plot(d, dataflag[0])
+"""

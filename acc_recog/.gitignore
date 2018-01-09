@@ -4,6 +4,9 @@
 *.npz
 *.pkl
 
+*.png
+*.svg
+
 # folder
 dataset
 __pycache__

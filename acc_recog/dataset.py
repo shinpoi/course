@@ -207,6 +207,7 @@ def muilt_plot(act):
     cv2.imwrite(act + ".png", b_img)
 
 
+# [Warning] may generate a very large data
 def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #seq_arr.shape = (n, range(3w~4w), channel)
     n_or = seq_arr.shape[0]
     rng = seq_arr.shape[1]
@@ -218,6 +219,8 @@ def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #se
     data_shape.insert(0, n_or)
     data = np.zeros(data_shape, dtype=np.float64)
     for i in range(n_or):
+        if i%10 == 0:
+            logging.debug("seq2specblock(): %d/%d" % (i, n_or))
         for j in range(n_block):
             data[i, j] = spectrogram(seq_arr[i, overlap*j:(overlap*j + MAX_LENGTH)])
     if plot:
