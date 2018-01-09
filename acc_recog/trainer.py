@@ -157,13 +157,34 @@ class SeqEvaluator(object):
         logging.debug("len of flag: %d" % len(self.dataflag))
 
     @staticmethod
-    def flag_temp(flag_list):
+    def flag2time(flag_list):
         new_flag = []
         for sec in flag_list:  # [[st_time, ed_time, act_code], ..., ...]
             if sec[2] < 0 or sec[2] > 5:
                 continue
-            new_flag.append([(sec[0]-2200)/55 + 20, (sec[1]-2200)/55 + 20, sec[2]])
+            st = (sec[0]-2200)/55 + 20
+            st = st if st > 0 else 0
+            ed = (sec[1]-2200)/55 + 20
+            ed = ed if ed > 0 else 0
+            new_flag.append([int(st), int(ed), int(sec[2])])
         return new_flag
+
+    @staticmethod
+    def eva_overlap(eva_arr, flag_time):
+        n = eva_arr.shape[0]
+        t_len_sum = 0
+        wrong = 0
+        eva_arr = np.array([np.argmax(x) for x in eva_arr], dtype=np.int32)
+        for t in flag_time:
+            t_len = t[1]-t[0]
+            t_len_sum += (t_len)
+            ans = eva_arr[t[0]:t[1]] - (np.zeros(t_len, dtype=np.int32) + t[2])
+            wrong += np.sum(np.logical_xor(ans, np.zeros(t_len, dtype=np.int32)))
+        try:
+            return 1 - wrong/t_len_sum
+        except ZeroDivisionError:
+            logging.error("error flag!: %s" % str(flag_time))
+            return 0.9
 
     def set_seq_spec(self, seq_spec):
         self.seq_spec = None
@@ -173,7 +194,7 @@ class SeqEvaluator(object):
     def get_a_evaluate(self, x):
         return F.softmax(self.model.predict(Variable(x))).data
 
-    def plot(self, eva_arr, flag_list, save_name='uname.svg'):
+    def plot(self, eva_arr, flag_time, save_name='uname.svg'):
         n = eva_arr.shape[0]
         n_acr = eva_arr.shape[1]
         plt.figure(0, figsize=(16, 9))
@@ -185,8 +206,7 @@ class SeqEvaluator(object):
         for i in range(n_acr):
             plt.plot(range(n), eva_arr[:, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
 
-        flags = self.flag_temp(flag_list)
-        for flag in flags:
+        for flag in flag_time:
             act = flag[2]
             plt.axvspan(flag[0], flag[1], facecolor=self.colors[act], alpha=0.2)
 
@@ -201,12 +221,15 @@ class SeqEvaluator(object):
             pass
 
         n = self.seq_spec.shape[0]
+        overrate_arr = np.zeros(n, dtype=np.float64)
         for i in range(n):
+            flag_time = self.flag2time(dataflag[i+n_st])
             eva = cuda.to_cpu(self.get_a_evaluate(xp.array(self.seq_spec[i])))
-            self.plot(eva, dataflag[i+n_st], save_name=save_root + ('%d.svg' % (i+n_st)))
+            overrate_arr[i] = self.eva_overlap(eva, flag_time)
+            self.plot(eva, flag_time, save_name=save_root + ('%d.svg' % (i+n_st)))
             if i % 10 == 0:
                 print("eva_all(): %d/%d" % (i, n))
-
+        logging.info("overlap rate = %f" % np.average(overrate_arr))
 
 if __name__ == '__main__':
     """
@@ -226,6 +249,7 @@ if __name__ == '__main__':
 
     for i in [60, 90, 120, 150, 177]:
         del sp_data
+        print("read dataset: %d" % i)
         sp_data = np.load("./dataset/seq/seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
         se.set_seq_spec(sp_data)
         se.eva_all(n_st=(round(i/30)*30-30))
