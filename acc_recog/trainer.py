@@ -31,12 +31,16 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 class Model(object):
-    def __init__(self, load_data=True):
+    def __init__(self, load_data=True, load_model=None):
         logging.info('reading dataset')
         if load_data:
-            dataset = np.load(ROOT + 'spec_dataset.npy')
-            dataflag = np.load(ROOT + 'dataflag.npy')[:, 1]
+            dataset_name = ROOT + 'spec_dataset.npy'
+            dataflag_name = ROOT + 'dataflag.npy'
+            dataset = np.load(dataset_name)
+            dataflag = np.load(dataflag_name)[:, 1]
             print("dataset.shape:", dataset.shape)
+            print("read dataset from: %s" % dataset_name)
+            print("read dataflag from: %s" % dataflag_name)
             length = len(dataset)
             gap = int(length*0.2)  # num of test samples
             ran_list = np.random.permutation(length)
@@ -59,7 +63,10 @@ class Model(object):
 
         logging.info('setting model')
 
-        self.model = model.TINY_D()  # input: x, output: one hot y
+        if not load_model:
+            self.model = model.TINY_D()  # input: x, output: one hot y
+        else:
+            self.model = load_model
         self.lr = 0.002  # learning rate
         logging.info('start learning rate = %f' % self.lr)
         self.optimizer = optimizers.Adam(alpha=self.lr)
@@ -97,7 +104,7 @@ class Model(object):
 
             # update learning rate
             if j%100 == 0:
-                rate = round(self.lr * ((epoch-j)/epoch), 4)
+                rate = round(self.lr * (1 - np.sqrt(j/epoch)), 6)
                 if not rate:
                     rate = 0.000001
                 self.optimizer.alpha = rate
@@ -135,7 +142,7 @@ class Model(object):
             cls = int(np.argmax(ans[i]))  # one hot -> int
             if cls == true_yt[i]:
                 acc += 1
-        print("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
+        logging.info("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
 
 
 from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap
@@ -178,13 +185,14 @@ class SeqEvaluator(object):
         for t in flag_time:
             t_len = t[1]-t[0]
             t_len_sum += (t_len)
+            ### equal = 0, unequal = 1
             ans = eva_arr[t[0]:t[1]] - (np.zeros(t_len, dtype=np.int32) + t[2])
             wrong += np.sum(np.logical_xor(ans, np.zeros(t_len, dtype=np.int32)))
         try:
             return 1 - wrong/t_len_sum
         except ZeroDivisionError:
             logging.error("error flag!: %s" % str(flag_time))
-            return 0.9
+            return 0.9   # just for emergency, need fix (flag_time has bad data)
 
     def set_seq_spec(self, seq_spec):
         self.seq_spec = None
@@ -232,12 +240,13 @@ class SeqEvaluator(object):
         logging.info("overlap rate = %f" % np.average(overrate_arr))
 
 if __name__ == '__main__':
-    """
+    ### training
     M = Model()
     M.train()
     M.save_model('end')
     logging.info('training end')
     """
+    ### eval seq
     model = Model(load_data=False)
     serializers.load_npz('cpu_model_end.npz', model.model)
     with open("./dataset/seq/dataflag.pkl", 'rb') as f:
@@ -253,24 +262,4 @@ if __name__ == '__main__':
         sp_data = np.load("./dataset/seq/seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
         se.set_seq_spec(sp_data)
         se.eva_all(n_st=(round(i/30)*30-30))
-
-
-"""
-import trainer as tr
-import numpy as np
-import pickle as pk
-from chainer import serializers, cuda
-import matplotlib.pyplot as plt
-
-xp = cuda.cupy
-model = tr.Model(load_data=False)
-serializers.load_npz('cpu_model_end.npz', model.model)
-with open("./dataset/seq/dataflag.pkl", 'rb') as f:
-    dataflag = pk.load(f)
-sp_data = np.load("./dataset/seq/seq_spec_30.npy")
-sp_data = sp_data.transpose((0, 1, 4, 2, 3))
-se = tr.SeqEvaluator(model, sp_data, sp_data)
-
-d = cuda.to_cpu(se.get_a_evaluate(xp.array(sp_data[0], dtype=xp.float32)))
-se.plot(d, dataflag[0])
-"""
+    """

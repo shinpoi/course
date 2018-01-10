@@ -29,7 +29,7 @@ overlap = int(nfft / 2)  # 55
 window = np.hamming(nfft)
 spec_row = int((frame_length - nfft)/overlap + 1)  # (2200 - 110)/55 + 1 = 39
 spec_col = int(nfft/2 + 1)  # 110/2 + 1 = 56
-sepc_channel = 3  # x, y, z
+sepc_channel = 6  # x, y, z
 
 
 def float_(x):
@@ -45,8 +45,8 @@ def getact(root, num, p_act=re.compile('Activity: ([a-zA-z]+)'), **argd):
         return p_act.search(meta).group(1)  # p_act = /Activity: ([a-zA-z]+)/
 
 
-def readacc(root, num, **argd):
-    with open(root + 'HASC%s-acc.csv' % num) as f:
+def readacc(root, num, sensor='acc', **argd):
+    with open(root + 'HASC%s-%s.csv' % (num, sensor)) as f:
         li = [x[1:] for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
         length = len(li)
     if length > argd['minl'] and length < argd['maxl']:   # (read all) if True:
@@ -57,9 +57,9 @@ def readacc(root, num, **argd):
         return None
 
 
-def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.[0-9]+E[0-9]?)?,([a-zA-Z]+)'), **argd):
-    with open(root + 'HASC%s-acc.csv' % num) as f:
-        li = [x for x in csv.reader(f)]  # format: [time, x, y, z] -> [x, y, z]
+def readacc_seq(root, num, sensor='acc', p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.[0-9]+E[0-9]?)?,([a-zA-Z]+)'), **argd):
+    with open(root + 'HASC%s-%s.csv' % (num, sensor)) as f:
+        li = [x for x in csv.reader(f)]  # format: [time, x, y, z]
         length = len(li)
     with open(root + 'HASC%s.label' % num) as f:
         flag_list = []
@@ -105,7 +105,7 @@ def readacc_seq(root, num, p_label=re.compile('([0-9]+\.[0-9]+E[0-9]?),([0-9]+\.
 # read csv and dump to arr
 def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.compile('HASC([0-9]+).meta')):
     n = 0
-    dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, 3), dtype=np.float64)  # shape: (7000, 2200, 3)
+    dataset = np.zeros((PRE_NUM_OF_SAMPLE, maxl, sepc_channel), dtype=np.float64)  # shape: (7000, 2200, 3)
     if seq:
         dataflag = []
     else:
@@ -119,16 +119,22 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                 num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
                 if num:
                     num = num.group(1)
-                    if seq:
-                        argd = {'maxl':maxl, 'minl':minl, 'dataflag':dataflag}
-                        data_single = readacc_seq(root, num, **argd)
-                    else:
-                        argd = {'maxl':maxl, 'minl':minl}
-                        act = getact(root, num)
-                        data_single = readacc(root, num, **argd)
+                    try:
+                        if seq:
+                            argd = {'maxl':maxl, 'minl':minl, 'dataflag':dataflag}
+                            data_single = readacc_seq(root, num, **argd)
+                            data_single_gyo = readacc_seq(root, num, sensor='gyro', **argd)
+                        else:
+                            argd = {'maxl':maxl, 'minl':minl}
+                            act = getact(root, num)
+                            data_single = readacc(root, num, **argd)
+                            data_single_gyo = readacc(root, num, sensor='gyro', **argd)
+                    except ValueError:
+                        print("root: %s, num: %s" % (root, num))
+                        raise ValueError
 
-                    if type(data_single) != type(None):
-                        dataset[n] = data_single
+                    if (type(data_single) != type(None)) and (type(data_single_gyo) != type(None)):
+                        dataset[n] = np.concatenate((data_single, data_single_gyo), axis=-1)
                         if not seq:
                             dataflag[n] = (num, act_dict[act])
                         n += 1
