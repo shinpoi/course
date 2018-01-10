@@ -66,7 +66,7 @@ class Model(object):
         if not load_model:
             self.model = model.TINY_D()  # input: x, output: one hot y
         else:
-            self.model = load_model
+            self.model = load_model()
         self.lr = 0.002  # learning rate
         logging.info('start learning rate = %f' % self.lr)
         self.optimizer = optimizers.Adam(alpha=self.lr)
@@ -82,7 +82,7 @@ class Model(object):
         serializers.save_npz('cpu_model_%s.npz' % num, self.model)
         logging.info('Model \'cpu_model_%s.npz\' Saved' % num)
 
-    def train(self, epoch=1000, bc=32):
+    def train(self, epoch=2000, bc=32):
         n = len(self.x_train)
         logging.info('training start, epoch = 0/%d' % epoch)
         for j in range(epoch):
@@ -104,8 +104,8 @@ class Model(object):
 
             # update learning rate
             if j%100 == 0:
-                rate = round(self.lr * (1 - np.sqrt(j/epoch)), 6)
-                if not rate:
+                rate = round(self.lr * ((epoch-j)/epoch)**2, 6)
+                if rate <= 0:
                     rate = 0.000001
                 self.optimizer.alpha = rate
                 logging.debug("change alpha to %f" % rate)
@@ -234,7 +234,7 @@ class SeqEvaluator(object):
             flag_time = self.flag2time(dataflag[i+n_st])
             eva = cuda.to_cpu(self.get_a_evaluate(xp.array(self.seq_spec[i])))
             overrate_arr[i] = self.eva_overlap(eva, flag_time)
-            self.plot(eva, flag_time, save_name=save_root + ('%d.svg' % (i+n_st)))
+            self.plot(eva, flag_time, save_name=save_root + ('%d_.svg' % (i+n_st)))
             if i % 10 == 0:
                 print("eva_all(): %d/%d" % (i, n))
         logging.info("overlap rate = %f" % np.average(overrate_arr))
@@ -247,19 +247,18 @@ if __name__ == '__main__':
     logging.info('training end')
     """
     ### eval seq
+    data_root = "./dataset/seq_6ch/"
     model = Model(load_data=False)
-    serializers.load_npz('cpu_model_end.npz', model.model)
-    with open("./dataset/seq/dataflag.pkl", 'rb') as f:
+    # model = Model(load_data=False, load_model=model.TINY_D_backup)
+    serializers.load_npz(data_root + "cpu_model_end.npz", model.model)
+    with open(data_root + "dataflag.pkl", 'rb') as f:
         dataflag = pk.load(f)
-    sp_data = np.load("./dataset/seq/seq_spec_30.npy")
-    sp_data = sp_data.transpose((0, 1, 4, 2, 3))
-    se = SeqEvaluator(model, sp_data, dataflag)
-    se.eva_all()
+    se = SeqEvaluator(model, None, dataflag)
 
-    for i in [60, 90, 120, 150, 177]:
-        del sp_data
+    for i in range(20, 41, 20):
         print("read dataset: %d" % i)
-        sp_data = np.load("./dataset/seq/seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
+        sp_data = np.load(data_root + "seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
         se.set_seq_spec(sp_data)
         se.eva_all(n_st=(round(i/30)*30-30))
+        del sp_data
     """

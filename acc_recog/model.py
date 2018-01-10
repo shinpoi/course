@@ -8,7 +8,7 @@ import chainer.links as L
 
 class TINY_D_backup(Chain):
     def __init__(self):
-        super(TINY_D, self).__init__(
+        super(TINY_D_backup, self).__init__(
             conv1  = L.Convolution2D(3, 64, ksize=3, stride=1, pad=1, nobias=True),
             bn1    = L.BatchNormalization(64, use_beta=False),
             bias1  = L.Bias(shape=(64,)),
@@ -81,12 +81,8 @@ class TINY_D(Chain):
             conv4b  = L.Convolution2D(256, 512, ksize=3, stride=1, pad=1, nobias=True),
             bn4b    = L.BatchNormalization(512, use_beta=False),
             bias4b  = L.Bias(shape=(512,)),
-            conv5a  = L.Convolution2D(512, 512, ksize=1, stride=1, pad=0, nobias=True),
-            bn5a    = L.BatchNormalization(512, use_beta=False),
-            conv5b  = L.Convolution2D(512, 512, ksize=1, stride=1, pad=0, nobias=True),
-            bn5b    = L.BatchNormalization(512, use_beta=False),
             ##### F.concat() ####
-            conv5c  = L.Convolution2D(1024, 1024, ksize=1, stride=1, pad=0, nobias=True),
+            conv5  = L.Convolution2D(1024, 1024, ksize=1, stride=1, pad=0, nobias=True),
             # AvgPool(3x3, 2)
             conv6 = L.Convolution2D(1024, 6, ksize=1, stride=1, pad=0),
         )
@@ -104,7 +100,6 @@ class TINY_D(Chain):
         ha = F.max_pooling_2d(ha, ksize=3, stride=2, pad=0)
         ha = F.leaky_relu(self.bias4a(self.bn4a(self.conv4a(ha))), slope=0.1)
         ha = F.max_pooling_2d(ha, ksize=3, stride=2, pad=0)
-        ha = F.leaky_relu(self.bn5a(self.conv5a(ha)), slope=0.1)
 
         hb = F.leaky_relu(self.bias1b(self.bn1b(self.conv1b(xb))), slope=0.1)
         hb = F.max_pooling_2d(hb, ksize=3, stride=2, pad=0)
@@ -114,12 +109,11 @@ class TINY_D(Chain):
         hb = F.max_pooling_2d(hb, ksize=3, stride=2, pad=0)
         hb = F.leaky_relu(self.bias4b(self.bn4b(self.conv4b(hb))), slope=0.1)
         hb = F.max_pooling_2d(hb, ksize=3, stride=2, pad=0)
-        hb = F.leaky_relu(self.bn5b(self.conv5b(hb)), slope=0.1)
 
         h = F.concat((ha, hb), axis=1)
         del ha
         del hb
-        h = self.conv5c(h)
+        h = self.conv5(h)
         h = F.average_pooling_2d(h, ksize=(h.shape[-2], h.shape[-1]))
         h = self.conv6(h)
         # h = F.dropout(h, ratio=0.4)

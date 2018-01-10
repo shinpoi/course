@@ -123,21 +123,30 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                         if seq:
                             argd = {'maxl':maxl, 'minl':minl, 'dataflag':dataflag}
                             data_single = readacc_seq(root, num, **argd)
-                            data_single_gyo = readacc_seq(root, num, sensor='gyro', **argd)
+                            if sepc_channel > 3:
+                                data_single_gyo = readacc_seq(root, num, sensor='gyro', **argd)
                         else:
                             argd = {'maxl':maxl, 'minl':minl}
                             act = getact(root, num)
                             data_single = readacc(root, num, **argd)
-                            data_single_gyo = readacc(root, num, sensor='gyro', **argd)
+                            if sepc_channel > 3:
+                                data_single_gyo = readacc(root, num, sensor='gyro', **argd)
                     except ValueError:
                         print("root: %s, num: %s" % (root, num))
                         raise ValueError
 
-                    if (type(data_single) != type(None)) and (type(data_single_gyo) != type(None)):
-                        dataset[n] = np.concatenate((data_single, data_single_gyo), axis=-1)
-                        if not seq:
-                            dataflag[n] = (num, act_dict[act])
-                        n += 1
+                    if sepc_channel > 3:
+                        if (type(data_single) != type(None)) and (type(data_single_gyo) != type(None)):
+                            dataset[n] = np.concatenate((data_single, data_single_gyo), axis=-1)
+                            if not seq:
+                                dataflag[n] = (num, act_dict[act])
+                            n += 1
+                    else:
+                        if (type(data_single) != type(None)):
+                            dataset[n] = data_single
+                            if not seq:
+                                dataflag[n] = (num, act_dict[act])
+                            n += 1
                         if n % 500 == 0:
                             logging.debug("read samples: %d" % n)
 
@@ -214,7 +223,8 @@ def muilt_plot(act):
 
 
 # [Warning] may generate a very large data
-def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #seq_arr.shape = (n, range(3w~4w), channel)
+def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):
+    ### seq_arr.shape = (n, range(3w~4w), channel)
     n_or = seq_arr.shape[0]
     rng = seq_arr.shape[1]
     n_block = int((rng - MAX_LENGTH)/overlap)
@@ -224,6 +234,7 @@ def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #se
     data_shape.insert(0, n_block)
     data_shape.insert(0, n_or)
     data = np.zeros(data_shape, dtype=np.float64)
+
     for i in range(n_or):
         if i%10 == 0:
             logging.debug("seq2specblock(): %d/%d" % (i, n_or))
@@ -235,8 +246,23 @@ def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):   #se
             for j in range(n_block):
                 plot_spectrogram(data[i, j], name=(plot_save_root+"%d_%d.png" % (i, j)))
     return data
+"""
+import numpy as np
+import pickle as pk
+import dataset as da
 
+dataset, dataflag = da.csv2arr("/home/shin-u16/document/HASC-IPSC/0_sequence/", 30000, 40000, seq=True)
+print(dataset.shape, len(dataflag))
+np.save("dataset.npy", dataset)
+with open("dataflag.pkl", "wb") as f:
+    pk.dump(dataflag, f)
 
+scale = 20
+num = 41
+for i in range(scale, num, scale):
+    np.save(("seq_spec_%d.npy" % i), da.seq2specblock(dataset[i-scale:i]))
+    print("saved seq_spec_%d.npy include data[%d:%d]" % (i, i-scale, i))
+"""
 ########################################
 if __name__ == '__main__':
     # read dataset
@@ -255,13 +281,13 @@ if __name__ == '__main__':
 
     # create spectrogram
     spec_dataset = np.zeros((len(dataset), sepc_channel, spec_row, spec_col), dtype=np.float32)
-
+    """
     save_root = './sepc/'
     try:
         os.mkdir(save_root)
     except FileExistsError:
         pass
-
+    """
     for i in range(len(dataset)):
         spec_arr = spectrogram(dataset[i])
         spec_dataset[i] = spec_arr.transpose((2, 0, 1))
