@@ -14,7 +14,7 @@ logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
 # <Parameter> dataset
 # DATA_DIR = './'
 DATA_DIR = '/home/shin-u16/document/HASC-IPSC/BasicActivity/'
-PRE_NUM_OF_SAMPLE = 8000
+PRE_NUM_OF_SAMPLE = 300
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
@@ -142,6 +142,9 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                     except ValueError:
                         logging.error("ValueError! root: %s, num: %s" % (root, num))
                         raise ValueError
+                    except FileNotFoundError as e:
+                        logging.error(e)
+                        continue
 
                     if sepc_channel > 3:
                         if (type(data_single) != type(None)) and (type(data_single_gyo) != type(None)):
@@ -155,7 +158,7 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                     else:
                         if (type(data_single) != type(None)):
                             dataset[n] = data_single
-                            if not seq:
+                            if seq:
                                 dataflag.append(flag_acc)
                             else:
                                 dataflag[n] = (num, act_dict[act])
@@ -272,7 +275,7 @@ with open("dataflag.pkl", "wb") as f:
     pk.dump(dataflag, f)
 
 scale = 20
-num = 41
+num = 81
 for i in range(scale, num, scale):
     np.save(("seq_spec_%d.npy" % i), da.seq2specblock(dataset[i-scale:i]))
     print("saved seq_spec_%d.npy include data[%d:%d]" % (i, i-scale, i))

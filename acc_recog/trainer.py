@@ -240,7 +240,6 @@ class SeqEvaluator(object):
         logging.info("overlap rate = %f" % np.average(overrate_arr))
 
 if __name__ == '__main__':
-    """
     ### training
     M = Model()
     M.train()
@@ -248,17 +247,18 @@ if __name__ == '__main__':
     logging.info('training end')
     """
     ### eval seq
-    data_root = "./dataset/seq_6ch/"
-    model = Model(load_data=False)
-    # model = Model(load_data=False, load_model=model.TINY_D_backup)
+    data_root = "./dataset/seq_3ch_gyo_NoS3/"
+    # model = Model(load_data=False)
+    model = Model(load_data=False, load_model=model.TINY_D_backup)
     serializers.load_npz(data_root + "cpu_model_end.npz", model.model)
     with open(data_root + "dataflag.pkl", 'rb') as f:
         dataflag = pk.load(f)
     se = SeqEvaluator(model, None, dataflag)
 
-    for i in range(30, 41, 30):
+    for i in range(20, 81, 20):
         print("read dataset: %d" % i)
         sp_data = np.load(data_root + "seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
         se.set_seq_spec(sp_data)
-        se.eva_all(n_st=(round(i/30)*30-30))
+        se.eva_all(n_st=(round(i/20)*20-20))
         del sp_data
+    """
