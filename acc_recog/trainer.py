@@ -82,7 +82,7 @@ class Model(object):
         serializers.save_npz('cpu_model_%s.npz' % num, self.model)
         logging.info('Model \'cpu_model_%s.npz\' Saved' % num)
 
-    def train(self, epoch=2000, bc=32):
+    def train(self, epoch=1000, bc=32):
         n = len(self.x_train)
         logging.info('training start, epoch = 0/%d' % epoch)
         for j in range(epoch):
@@ -240,6 +240,7 @@ class SeqEvaluator(object):
         logging.info("overlap rate = %f" % np.average(overrate_arr))
 
 if __name__ == '__main__':
+    """
     ### training
     M = Model()
     M.train()
@@ -255,10 +256,9 @@ if __name__ == '__main__':
         dataflag = pk.load(f)
     se = SeqEvaluator(model, None, dataflag)
 
-    for i in range(20, 41, 20):
+    for i in range(30, 41, 30):
         print("read dataset: %d" % i)
         sp_data = np.load(data_root + "seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
         se.set_seq_spec(sp_data)
         se.eva_all(n_st=(round(i/30)*30-30))
         del sp_data
-    """

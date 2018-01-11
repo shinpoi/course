@@ -14,7 +14,7 @@ logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
 # <Parameter> dataset
 # DATA_DIR = './'
 DATA_DIR = '/home/shin-u16/document/HASC-IPSC/BasicActivity/'
-PRE_NUM_OF_SAMPLE = 7000
+PRE_NUM_OF_SAMPLE = 8000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
@@ -43,6 +43,13 @@ def getact(root, num, p_act=re.compile('Activity: ([a-zA-z]+)'), **argd):
     with open(root + 'HASC%s.meta' % num) as f:
         meta = f.read()
         return p_act.search(meta).group(1)  # p_act = /Activity: ([a-zA-z]+)/
+
+def getterminal(root, num, p_act=re.compile('TerminalType:(.+?);'), **argd):
+    with open(root + 'HASC%s.meta' % num) as f:
+        meta = f.read()
+        if 'Nexus' in p_act.search(meta).group(1):  # p_act = /Activity: ([a-zA-z]+)/
+            return True
+        return False
 
 
 def readacc(root, num, sensor='acc', **argd):
@@ -83,6 +90,7 @@ def readacc_seq(root, num, sensor='acc', p_label=re.compile('([0-9]+\.[0-9]+E[0-
         dataset_single = np.zeros((argd['maxl'], 4), dtype=np.float64)
         dataset_single[:length] = np.array(li, dtype=np.float64)
         i = j = k = 0
+        ### time to flash
         while True:
             try:
                 if dataset_single[k, 0] > flag_list[i][j]:
@@ -96,10 +104,9 @@ def readacc_seq(root, num, sensor='acc', p_label=re.compile('([0-9]+\.[0-9]+E[0-
             except IndexError:
                 # print('break in (i,j,k) = ', (i, j, k))
                 break
-        argd['dataflag'].append(flag_list)
-        return dataset_single[:, 1:]
+        return dataset_single[:, 1:], flag_list
     else:
-        return None
+        return None, None
 
 
 # read csv and dump to arr
@@ -119,33 +126,40 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                 num = p_num.search(f_name)  # p_num = /HASC([0-9]+).meta/
                 if num:
                     num = num.group(1)
+                    if not getterminal(root, num):
+                        continue
                     try:
+                        argd = {'maxl':maxl, 'minl':minl}
                         if seq:
-                            argd = {'maxl':maxl, 'minl':minl, 'dataflag':dataflag}
-                            data_single = readacc_seq(root, num, **argd)
+                            data_single, flag_acc = readacc_seq(root, num, **argd)
                             if sepc_channel > 3:
-                                data_single_gyo = readacc_seq(root, num, sensor='gyro', **argd)
+                                data_single_gyo, flag_None = readacc_seq(root, num, sensor='gyro', **argd)
                         else:
-                            argd = {'maxl':maxl, 'minl':minl}
                             act = getact(root, num)
                             data_single = readacc(root, num, **argd)
                             if sepc_channel > 3:
                                 data_single_gyo = readacc(root, num, sensor='gyro', **argd)
                     except ValueError:
-                        print("root: %s, num: %s" % (root, num))
+                        logging.error("ValueError! root: %s, num: %s" % (root, num))
                         raise ValueError
 
                     if sepc_channel > 3:
                         if (type(data_single) != type(None)) and (type(data_single_gyo) != type(None)):
                             dataset[n] = np.concatenate((data_single, data_single_gyo), axis=-1)
-                            if not seq:
+                            if seq:
+                                dataflag.append(flag_acc)
+                            else:
                                 dataflag[n] = (num, act_dict[act])
+
                             n += 1
                     else:
                         if (type(data_single) != type(None)):
                             dataset[n] = data_single
                             if not seq:
+                                dataflag.append(flag_acc)
+                            else:
                                 dataflag[n] = (num, act_dict[act])
+
                             n += 1
                         if n % 500 == 0:
                             logging.debug("read samples: %d" % n)
