@@ -47,8 +47,10 @@ class Model(object):
             self.x_train = dataset[ran_list[gap:],]
             self.y_train = dataflag[ran_list[gap:],]
 
-            self.x_test = xp.array(dataset[ran_list[:gap],])
-            self.y_test = xp.array(dataflag[ran_list[:gap],])
+            # self.x_test = xp.array(dataset[ran_list[:gap],])
+            # self.y_test = xp.array(dataflag[ran_list[:gap],])
+            self.x_test = xp.array(dataset[ran_list,])
+            self.y_test = xp.array(dataflag[ran_list,])
             self.V_x_test = Variable(self.x_test)
 
             # x_train = dataset[ran_list,]  # test-data included
@@ -64,7 +66,7 @@ class Model(object):
         logging.info('setting model')
 
         if not load_model:
-            self.model = model.TINY_D()  # input: x, output: one hot y
+            self.model = model.TINY_D_6ch()  # input: x, output: one hot y
         else:
             self.model = load_model()
         self.lr = 0.002  # learning rate
@@ -140,6 +142,8 @@ class Model(object):
         """
         for i in range(nrow):
             cls = int(np.argmax(ans[i]))  # one hot -> int
+            # extra -- detail of evaluate
+            detail_acc[int(true_yt[i]), cls] += 1
             if cls == true_yt[i]:
                 acc += 1
         logging.info("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
@@ -186,6 +190,11 @@ class SeqEvaluator(object):
             t_len = t[1]-t[0]
             t_len_sum += (t_len)
             ### equal = 0, unequal = 1
+            #-------detail eva----------
+            # t[0]:real start, t[1]:real end, t[2]:label, eva_arr[t[0]:t[1]]:predict ans
+            for i in eva_arr[t[0]:t[1]]:
+                detail_acc[t[2], i] += 1
+            #-------detail eva----------
             ans = eva_arr[t[0]:t[1]] - (np.zeros(t_len, dtype=np.int32) + t[2])
             wrong += np.sum(np.logical_xor(ans, np.zeros(t_len, dtype=np.int32)))
         try:
@@ -240,6 +249,9 @@ class SeqEvaluator(object):
         logging.info("overlap rate = %f" % np.average(overrate_arr))
 
 if __name__ == '__main__':
+    # extra -- detail of evaluate
+    detail_acc = np.zeros((6, 6), dtype=np.uint32)
+
     """
     ### training
     M = Model()
@@ -249,8 +261,8 @@ if __name__ == '__main__':
     """
     ### eval seq
     data_root = "./dataset/seq_6ch_NoS3/"
-    # model = Model(load_data=False)
     model = Model(load_data=False)
+    # model = Model(load_model=model.TINY_D_3ch)
     serializers.load_npz(data_root + "cpu_model_end.npz", model.model)
     with open(data_root + "dataflag.pkl", 'rb') as f:
         dataflag = pk.load(f)
@@ -262,4 +274,12 @@ if __name__ == '__main__':
         se.set_seq_spec(sp_data)
         se.eva_all(n_st=(round(i/20)*20-20))
         del sp_data
-    
+    """
+    # detail evaluate -- static
+    data_root = "./dataset/seq_3ch_acc_NoS3/"
+    ROOT = data_root
+    M = Model(load_model=model.TINY_D_3ch)
+    serializers.load_npz(data_root + "cpu_model_end.npz", M.model)
+    M.evaluate()
+    """
+    print(detail_acc)

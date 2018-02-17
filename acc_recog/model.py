@@ -6,9 +6,9 @@ import chainer.functions as F
 import chainer.links as L
 
 
-class TINY_D_backup(Chain):
+class TINY_D_3ch(Chain):
     def __init__(self):
-        super(TINY_D_backup, self).__init__(
+        super(TINY_D_3ch, self).__init__(
             conv1  = L.Convolution2D(3, 64, ksize=3, stride=1, pad=1, nobias=True),
             bn1    = L.BatchNormalization(64, use_beta=False),
             bias1  = L.Bias(shape=(64,)),
@@ -51,9 +51,9 @@ class TINY_D_backup(Chain):
         return h.reshape((h.shape[0], -1))
 
 
-class TINY_D(Chain):
+class TINY_D_6ch(Chain):
     def __init__(self):
-        super(TINY_D, self).__init__(
+        super(TINY_D_6ch, self).__init__(
             conv1a  = L.Convolution2D(3, 64, ksize=3, stride=1, pad=1, nobias=True),
             bn1a    = L.BatchNormalization(64, use_beta=False),
             bias1a  = L.Bias(shape=(64,)),

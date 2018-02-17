@@ -14,7 +14,7 @@ logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
 # <Parameter> dataset
 # DATA_DIR = './'
 DATA_DIR = '/home/shin-u16/document/HASC-IPSC/BasicActivity/'
-PRE_NUM_OF_SAMPLE = 300
+PRE_NUM_OF_SAMPLE = 8000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
 
