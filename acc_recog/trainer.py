@@ -247,6 +247,7 @@ class SeqEvaluator(object):
             if i % 10 == 0:
                 print("eva_all(): %d/%d" % (i, n))
         logging.info("overlap rate = %f" % np.average(overrate_arr))
+        return eva, flag_time
 
 if __name__ == '__main__':
     # extra -- detail of evaluate
