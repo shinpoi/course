@@ -155,22 +155,24 @@ import os
 import pickle as pk
 
 class SeqEvaluator(object):
-    def __init__(self, model, seq_spec, dataflag, spec_length=MAX_LENGTH, sepc_overlap=overlap):
+    def __init__(self, model, dataset, dataflag, sepc_overlap=overlap):
         self.model = model
-        # self.seq_spec = np.array(seq_spec, dtype=xp.float32)
-        self.seq_spec = seq_spec
-        self.data = None
+        self.delay = 11  ## frames(spec) of delay
+        self.step = 22
+        # self.gradation_arr = np.array([(0.01*(100-(10-i)**2)) for i in range(self.step)] ,dtype=np.float32)
+        # self.gradation_arr = np.array([0.4+1.6*(i/self.step) for i in range(self.step)] ,dtype=np.float32)
+        self.dataset = dataset
         self.dataflag = dataflag
-        #self.len_data = dataset.shape[2]
+        self.len_data = dataset.shape[1]
         self.len_spec = int((self.len_data - nfft)/overlap + 1)
-        #self.f2f_rate = len_spec/len_data
-        self.f2f_rate = 0.01815
-        self.spec_length = spec_length
+        self.f2f_rate = self.len_spec/self.len_data
+        # self.f2f_rate = 0.01815
         self.sepc_overlap = sepc_overlap
         self.act_dict = act_dict
         self.rev_act_dict = rev_act_dict
         self.colors = ['red', 'orange', 'green', 'blue', 'darkviolet', 'black']
-        self.delay = 20  ## frames(spec) of delay
+        # self.gradation_arr = np.zeros(self.step) + 1
+        print("dataset.shape:", dataset.shape)
         # logging.debug("data.shape: %s" % str(self.seq_spec.shape))
         # logging.debug("len of flag: %d" % len(self.dataflag))
 
@@ -185,12 +187,16 @@ class SeqEvaluator(object):
         return new_flag
 
     # spectrogram(array, channel, spec_row, spec_col)
-    def data2sepc(self, arr, step=spec_row):
-        ch = self.dataset.shape[1]
+    def data2sepc(self, arr):
+        st = time.time()
+        ch = self.dataset.shape[2]
         spec = spectrogram(arr, ch, self.len_spec, spec_col)
-        spec_batch = np.zeros((self.len_spec, ch, step, spec_col), dtype=np.float32)
-        for i in range(self.len_spec-step):
-            spec_batch[i] = spec[i:i+step].transpose((2,0,1))
+        spec_batch = np.zeros((self.len_spec, ch, self.step, spec_col), dtype=np.float32)
+        for i in range(self.len_spec-self.step):
+            spec_og = spec[i:i+self.step]
+            # bshape_og = spec_og.shape
+            # spec_og = (spec_og.reshape((self.step, -1)).transpose((1,0))*self.gradation_arr).transpose((1,0)).reshape(shape_og)
+            spec_batch[i] = spec_og.transpose((2,0,1))
         return spec_batch
 
     def eva_overlap(self, eva_arr, flag_time):
@@ -218,11 +224,6 @@ class SeqEvaluator(object):
             logging.error("wrong flag!: %s" % str(flag_time))
             return 0.9   # just for emergency, need fix (flag_time has bad data)
 
-    def set_seq_spec(self, seq_spec):
-        self.seq_spec = None
-        self.seq_spec = np.array(seq_spec, dtype=xp.float32)
-        logging.debug("set new seq_spec, shape: %s" % str(self.seq_spec.shape))
-
     def get_a_evaluate(self, x):
         return F.softmax(self.model.predict(Variable(x))).data
 
@@ -246,22 +247,23 @@ class SeqEvaluator(object):
         plt.savefig(save_name, dpi=150)
         plt.close()
 
-    def eva_all(self, save_root='./plot_seq_eva/', n_st=0):
+    def eva_all(self, save_root='./plot_seq_eva/'):
         try:
             os.mkdir(save_root)
         except FileExistsError:
             pass
 
-        n = self.seq_spec.shape[0]
-        overrate_arr = np.zeros(n, dtype=np.float64)
-        for i in range(n):
-            flag_time = self.flag2time(dataflag[i+n_st])
-            eva = cuda.to_cpu(self.get_a_evaluate(xp.array(self.seq_spec[i])))
-            overrate_arr[i] = self.eva_overlap(eva, flag_time)
-            self.plot(eva, flag_time, save_name=save_root + ('%d_.svg' % (i+n_st)))
+        ndata = self.dataset.shape[0]
+        acclist = []
+        for i in range(ndata):
+            spec = self.data2sepc(self.dataset[i])
+            flag_time = self.flag2time(dataflag[i])
+            eva = cuda.to_cpu(self.get_a_evaluate(xp.array(spec)))
+            acclist.append(self.eva_overlap(eva, flag_time))
+            self.plot(eva, flag_time, save_name=save_root + ('%d_.svg' % i))
             if i % 10 == 0:
-                print("eva_all(): %d/%d" % (i, n))
-        logging.info("overlap rate = %f" % np.average(overrate_arr))
+                print("eva_all(): %d/%d" % (i, ndata))
+        logging.info("acc = %f" % np.mean(acclist))
         return eva, flag_time
 
 if __name__ == '__main__':
@@ -282,14 +284,9 @@ if __name__ == '__main__':
     serializers.load_npz(data_root + "cpu_model_end.npz", model.model)
     with open(data_root + "dataflag.pkl", 'rb') as f:
         dataflag = pk.load(f)
-    se = SeqEvaluator(model, None, dataflag)
-
-    for i in range(20, 81, 20):
-        print("read dataset: %d" % i)
-        sp_data = np.load(data_root + "seq_spec_%d.npy" % i).transpose((0, 1, 4, 2, 3))
-        se.set_seq_spec(sp_data)
-        se.eva_all(n_st=(round(i/20)*20-20))
-        del sp_data
+    dataset = np.load(data_root + "dataset_seq.npy")
+    se = SeqEvaluator(model, dataset, dataflag)
+    se.eva_all()
     """
     # detail evaluate -- static
     data_root = "./dataset/seq_3ch_acc_NoS3/"
