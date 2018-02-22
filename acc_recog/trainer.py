@@ -149,7 +149,7 @@ class Model(object):
         logging.info("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
 
 
-from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap
+from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap, nfft, spectrogram, spec_col, spec_row
 import matplotlib.pyplot as plt
 import os
 import pickle as pk
@@ -157,35 +157,50 @@ import pickle as pk
 class SeqEvaluator(object):
     def __init__(self, model, seq_spec, dataflag, spec_length=MAX_LENGTH, sepc_overlap=overlap):
         self.model = model
-        self.seq_spec = np.array(seq_spec, dtype=xp.float32)
+        # self.seq_spec = np.array(seq_spec, dtype=xp.float32)
+        self.seq_spec = seq_spec
+        self.data = None
         self.dataflag = dataflag
+        #self.len_data = dataset.shape[2]
+        self.len_spec = int((self.len_data - nfft)/overlap + 1)
+        #self.f2f_rate = len_spec/len_data
+        self.f2f_rate = 0.01815
         self.spec_length = spec_length
         self.sepc_overlap = sepc_overlap
         self.act_dict = act_dict
         self.rev_act_dict = rev_act_dict
         self.colors = ['red', 'orange', 'green', 'blue', 'darkviolet', 'black']
-        logging.debug("data.shape: %s" % str(self.seq_spec.shape))
-        logging.debug("len of flag: %d" % len(self.dataflag))
+        self.delay = 20  ## frames(spec) of delay
+        # logging.debug("data.shape: %s" % str(self.seq_spec.shape))
+        # logging.debug("len of flag: %d" % len(self.dataflag))
 
-    @staticmethod
-    def flag2time(flag_list):
+    def flag2time(self, flag_list):
         new_flag = []
-        for sec in flag_list:  # [[st_time, ed_time, act_code], ..., ...]
+        for sec in flag_list:  # flag_list = [[st_frame, ed_frame, act_code], ..., ...]
             if sec[2] < 0 or sec[2] > 5:
                 continue
-            st = (sec[0]-2200)/55 + 20
-            st = st if st > 0 else 0
-            ed = (sec[1]-2200)/55 + 20
-            ed = ed if ed > 0 else 0
+            st = sec[0]*self.f2f_rate
+            ed = sec[1]*self.f2f_rate
             new_flag.append([int(st), int(ed), int(sec[2])])
         return new_flag
 
-    @staticmethod
-    def eva_overlap(eva_arr, flag_time):
+    # spectrogram(array, channel, spec_row, spec_col)
+    def data2sepc(self, arr, step=spec_row):
+        ch = self.dataset.shape[1]
+        spec = spectrogram(arr, ch, self.len_spec, spec_col)
+        spec_batch = np.zeros((self.len_spec, ch, step, spec_col), dtype=np.float32)
+        for i in range(self.len_spec-step):
+            spec_batch[i] = spec[i:i+step].transpose((2,0,1))
+        return spec_batch
+
+    def eva_overlap(self, eva_arr, flag_time):
         n = eva_arr.shape[0]
         t_len_sum = 0
         wrong = 0
         eva_arr = np.array([np.argmax(x) for x in eva_arr], dtype=np.int32)
+        eva_arr[self.delay:] = eva_arr[:-self.delay]
+        eva_arr[:self.delay] *= 0
+        eva_arr[:self.delay] += eva_arr[self.delay+1]
         for t in flag_time:
             t_len = t[1]-t[0]
             t_len_sum += (t_len)
@@ -200,7 +215,7 @@ class SeqEvaluator(object):
         try:
             return 1 - wrong/t_len_sum
         except ZeroDivisionError:
-            logging.error("error flag!: %s" % str(flag_time))
+            logging.error("wrong flag!: %s" % str(flag_time))
             return 0.9   # just for emergency, need fix (flag_time has bad data)
 
     def set_seq_spec(self, seq_spec):
@@ -221,7 +236,7 @@ class SeqEvaluator(object):
         plt.ylabel("probability")
 
         for i in range(n_acr):
-            plt.plot(range(n), eva_arr[:, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
+            plt.plot(range(self.delay, n), eva_arr[:-self.delay, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
 
         for flag in flag_time:
             act = flag[2]

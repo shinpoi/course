@@ -192,8 +192,7 @@ def csv_len_list(DIR=DATA_DIR):
                         len_list.append(length)
     return len_list
 
-
-def spectrogram(array, channel=sepc_channel):
+def spectrogram(array, channel=sepc_channel, spec_row=spec_row, spec_col=spec_col):
     data = np.zeros((spec_row, spec_col, channel), dtype=np.float64)
     for ch in range(channel):
         arr = array[:, ch]
