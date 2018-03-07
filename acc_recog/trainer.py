@@ -8,6 +8,7 @@ import numpy as np
 from chainer import using_config, no_backprop_mode, Variable, optimizers, serializers, cuda
 import chainer.functions as F
 import model
+import pickle as pk
 
 
 #################
@@ -47,10 +48,10 @@ class Model(object):
             self.x_train = dataset[ran_list[gap:],]
             self.y_train = dataflag[ran_list[gap:],]
 
-            # self.x_test = xp.array(dataset[ran_list[:gap],])
-            # self.y_test = xp.array(dataflag[ran_list[:gap],])
-            self.x_test = xp.array(dataset[ran_list,])
-            self.y_test = xp.array(dataflag[ran_list,])
+            self.x_test = xp.array(dataset[ran_list[:gap],])
+            self.y_test = xp.array(dataflag[ran_list[:gap],])
+            # self.x_test = xp.array(dataset[ran_list,])
+            # self.y_test = xp.array(dataflag[ran_list,])
             self.V_x_test = Variable(self.x_test)
 
             # x_train = dataset[ran_list,]  # test-data included
@@ -60,6 +61,9 @@ class Model(object):
             print("x_test.shape: ", self.x_test.shape)
             print("y_train.shape: ", self.y_train.shape)
             print("y_test.shape: ", self.y_test.shape)
+            self.ltrloss = []
+            self.lteloss = []
+            self.lacc = []
         else:
             self.x_train = self.y_train = self.x_test = self.y_test = self.V_x_test = None
 
@@ -102,6 +106,7 @@ class Model(object):
             logging.debug("epoch: %d, loss = %f" % (j, loss_sum))
 
             if j % 10 == 0:
+                self.ltrloss.append(float(loss_sum/bc))
                 self.evaluate()
 
             # update learning rate
@@ -114,7 +119,8 @@ class Model(object):
 
             if j%500 == 0:
                 self.save_model(str(j))
-        return None
+        with open("lacc_loss.pkl", "wb") as f:
+            pk.dump([self.lacc, self.ltrloss, self.lteloss], f)
 
     # return oringal output (need softmax to probability)
     def predict(self, Vx):
@@ -128,6 +134,7 @@ class Model(object):
             Vx = self.V_x_test
         yt = self.predict(Vx)
         loss_test = F.softmax_cross_entropy(yt, true_yt).data
+        self.lteloss.append(float(loss_test/true_yt.shape[0]))
         logging.info("test: loss = %f" % loss_test)
         ans = yt.data
         if rt:
@@ -147,6 +154,7 @@ class Model(object):
             if cls == true_yt[i]:
                 acc += 1
         logging.info("accurate: %d/%d = %f" % (acc, self.y_test.shape[0], acc/self.y_test.shape[0]))
+        self.lacc.append(acc/self.y_test.shape[0])
 
 
 from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap, nfft, spectrogram, spec_col, spec_row
@@ -270,7 +278,7 @@ if __name__ == '__main__':
     # extra -- detail of evaluate
     detail_acc = np.zeros((6, 6), dtype=np.uint32)
 
-    """
+    
     ### training
     M = Model()
     M.train()
@@ -287,12 +295,13 @@ if __name__ == '__main__':
     dataset = np.load(data_root + "dataset_seq.npy")
     se = SeqEvaluator(model, dataset, dataflag)
     se.eva_all()
-    """
+
     # detail evaluate -- static
     data_root = "./dataset/seq_3ch_acc_NoS3/"
     ROOT = data_root
     M = Model(load_model=model.TINY_D_3ch)
     serializers.load_npz(data_root + "cpu_model_end.npz", M.model)
     M.evaluate()
-    """
+
     print(detail_acc)
+    """
