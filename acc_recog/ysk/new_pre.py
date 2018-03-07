@@ -1,9 +1,10 @@
 # -*- endoce: utf-9 -*-
 # Python3
 
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 import csv
-import numpy as np
 
 ###########################################
 # spectrogram para
@@ -78,10 +79,6 @@ def get_arry(savename, _dir='./', ends='.csv'):
     print("saved array as %s" % savename)
 
 ###############################################################################
-##
-import matplotlib.pyplot as plt
-import numpy as np
-import os
 
 def cut_by_id(array, ch=13):
     list_ = []
