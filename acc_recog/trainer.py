@@ -149,13 +149,11 @@ class Model(object):
         self.lacc.append(acc/self.y_test.shape[0])
 
 
-
-
 class SeqEvaluator(object):
     def __init__(self, model, dataset, dataflag, sepc_overlap=overlap):
         self.model = model
-        self.delay = 0  ## frames(spec) of delay
-        self.step = 16  # default = 39
+        self.delay = 19  ## frames(spec) of delay, default = self.step/2
+        self.step = 39  # default = 39
         # self.gradation_arr = np.array([(0.01*(100-(10-i)**2)) for i in range(self.step)] ,dtype=np.float32)
         # self.gradation_arr = np.array([0.4+1.6*(i/self.step) for i in range(self.step)] ,dtype=np.float32)
         self.dataset = dataset

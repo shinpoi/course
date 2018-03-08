@@ -53,14 +53,17 @@ tr.detail_acc = np.zeros((6, 6), dtype=np.uint32)
 
 # se.set_seq_spec(sp_data)
 eva_list, flagtime = se.eva_all()
-print(tr.detail_acc)
-print("acc = %f" % (np.sum([tr.detail_acc[i, i] for i in range(tr.detail_acc.shape[0])]) / np.sum(tr.detail_acc)))
+ac = tr.detail_acc
+print(ac)
+print("acc = %f" % (np.sum([ac[i, i] for i in range(ac.shape[0])]) / np.sum(ac)))
+print("recall: ", [ac[i,i]/np.sum(ac[i]) for i in range(ac.shape[0])])
+print("precision: ", [ac[i,i]/np.sum(ac[:, i]) for i in range(ac.shape[0])])
 
 eva_list = np.argmax(eva_list, axis=2)
 
 pre_list = []
-st = ed = 0
 for eva in eva_list:
+    st = ed = 0
     temp_list = []
     for i in range(len(eva)):
         if eva[i] == eva[st]:
@@ -106,10 +109,10 @@ for i in range(len(eva_list)):
     plt.ylabel("Predict<--  -->True")
 
     for flag in flagtime[i]:
-        plt.axvspan(flag[0], flag[1], 0.6, 0.8, facecolor=colors[flag[2]])
+        plt.axvspan(flag[0], flag[1], 0.6, 0.8, facecolor=colors[flag[2]], alpha=0.6)
 
     for flag in pre_list[i]:
-        plt.axvspan(flag[0], flag[1], 0.2, 0.4, facecolor=colors[flag[2]])
+        plt.axvspan(flag[0], flag[1], 0.2, 0.4, facecolor=colors[flag[2]], alpha=0.6)
 
     plt.plot([0],[0], color='red', label='stay')
     plt.plot([0],[0], color='orange', label='walk')
