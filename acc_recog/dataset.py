@@ -5,11 +5,8 @@ import os
 import csv
 import re
 import numpy as np
-import logging
 import PIL.Image as Image
 import pickle
-
-logging.basicConfig(level='DEBUG', format='[%(levelname)s]   \t%(message)s')
 
 # <Parameter> dataset
 # DATA_DIR = './'
@@ -140,10 +137,10 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
                             if sepc_channel > 3:
                                 data_single_gyo = readacc(root, num, sensor='gyro', **argd)
                     except ValueError:
-                        logging.error("ValueError! root: %s, num: %s" % (root, num))
+                        print("ValueError! root: %s, num: %s" % (root, num))
                         raise ValueError
                     except FileNotFoundError as e:
-                        logging.error(e)
+                        print(e)
                         continue
 
                     if sepc_channel > 3:
@@ -165,9 +162,9 @@ def csv2arr(DIR=DATA_DIR, minl=MIN_LENGTH, maxl=MAX_LENGTH, seq=False, p_num=re.
 
                             n += 1
                         if n % 500 == 0:
-                            logging.debug("read samples: %d" % n)
+                            print("read samples: %d" % n)
 
-    logging.info("%d sapmles have read" % n)
+    print("%d sapmles have read" % n)
     dataset = dataset[:n]
     dataflag = dataflag[:n]
     return dataset, dataflag
@@ -253,11 +250,11 @@ def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):
 
     for i in range(n_or):
         if i%10 == 0:
-            logging.debug("seq2specblock(): %d/%d" % (i, n_or))
+            print("seq2specblock(): %d/%d" % (i, n_or))
         for j in range(n_block):
             data[i, j] = spectrogram(seq_arr[i, overlap*j:(overlap*j + MAX_LENGTH)])
     if plot:
-        logging.info("seq2specblock(): plot...")
+        print("seq2specblock(): plot...")
         for i in range(n_or):
             for j in range(n_block):
                 plot_spectrogram(data[i, j], name=(plot_save_root+"%d_%d.png" % (i, j)))
@@ -283,17 +280,17 @@ for i in range(scale, num, scale):
 if __name__ == '__main__':
     # read dataset
     if os.path.exists(DATA_DIR+'dataset.npy') and os.path.exists(DATA_DIR+'dataflag.npy'):
-        logging.info(".npy files exist, dataset will be read from local file")
+        print(".npy files exist, dataset will be read from local file")
         dataset = np.load(DATA_DIR+'dataset.npy')
         dataflag = np.load(DATA_DIR+'dataflag.npy')
     else:
-        logging.info("dataset.npy not exsits, start reading .csv files")
+        print("dataset.npy not exsits, start reading .csv files")
         dataset, dataflag = csv2arr()
         np.save('dataset.npy', dataset)
         np.save('dataflag.npy', dataflag)
         # with open('dataflag.pkl', 'wb') as f:
         #   pickle.dump(dataflag, f)
-        logging.info("dataset & dataflag have saved")
+        print("dataset & dataflag have saved")
 
     # create spectrogram
     spec_dataset = np.zeros((len(dataset), sepc_channel, spec_row, spec_col), dtype=np.float32)
@@ -310,7 +307,7 @@ if __name__ == '__main__':
         ### plot:
         # plot_spectrogram(spec_arr, (save_root + str(dataflag[i, 0]) + '_' + rev_act_dict[dataflag[i, 1]] + '.png'))
         if i % 500 == 0:
-            logging.debug("spectrogram: %d" % i)
+            print("spectrogram: %d" % i)
 
     np.save('spec_dataset.npy', spec_dataset)
-    logging.info("spec_dataset have saved")
+    print("spec_dataset have saved")

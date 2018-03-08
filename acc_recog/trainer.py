@@ -9,6 +9,7 @@ from chainer import using_config, no_backprop_mode, Variable, optimizers, serial
 import chainer.functions as F
 import model
 import pickle as pk
+import matplotlib.pyplot as plt
 
 
 #################
@@ -18,18 +19,9 @@ ROOT = './dataset/'
 xp = cuda.cupy
 # xp = np   ### use CPU
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='[%(levelname)s]   \t %(asctime)s \t%(message)s\t',
-                    datefmt='%Y/%m/%d (%A) - %H:%M:%S',
-                    filename= ROOT + 'train-model_' + time.strftime('%Y-%m-%d_%H-%M') + '.log',
-                    filemode='a'
-                    )
 
-console = logging.StreamHandler()
-console.setLevel(logging.DEBUG)
-formatter = logging.Formatter('[%(levelname)s]  \t%(message)s\t')
-console.setFormatter(formatter)
-logging.getLogger('').addHandler(console)
+
+from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap, nfft, spectrogram, spec_col, spec_row
 
 class Model(object):
     def __init__(self, load_data=True, load_model=None):
@@ -85,7 +77,7 @@ class Model(object):
 
     def save_model(self, num):
         logging.info('save model at epoch: %s' % num)
-        serializers.save_npz('cpu_model_%s.npz' % num, self.model)
+        serializers.save_npz(ROOT + 'cpu_model_%s.npz' % num, self.model)
         logging.info('Model \'cpu_model_%s.npz\' Saved' % num)
 
     def train(self, epoch=1000, bc=32):
@@ -157,16 +149,13 @@ class Model(object):
         self.lacc.append(acc/self.y_test.shape[0])
 
 
-from dataset import act_dict, rev_act_dict, MAX_LENGTH, overlap, nfft, spectrogram, spec_col, spec_row
-import matplotlib.pyplot as plt
-import os
-import pickle as pk
+
 
 class SeqEvaluator(object):
     def __init__(self, model, dataset, dataflag, sepc_overlap=overlap):
         self.model = model
-        self.delay = 11  ## frames(spec) of delay
-        self.step = 22
+        self.delay = 0  ## frames(spec) of delay
+        self.step = 16  # default = 39
         # self.gradation_arr = np.array([(0.01*(100-(10-i)**2)) for i in range(self.step)] ,dtype=np.float32)
         # self.gradation_arr = np.array([0.4+1.6*(i/self.step) for i in range(self.step)] ,dtype=np.float32)
         self.dataset = dataset
@@ -212,9 +201,10 @@ class SeqEvaluator(object):
         t_len_sum = 0
         wrong = 0
         eva_arr = np.array([np.argmax(x) for x in eva_arr], dtype=np.int32)
-        eva_arr[self.delay:] = eva_arr[:-self.delay]
-        eva_arr[:self.delay] *= 0
-        eva_arr[:self.delay] += eva_arr[self.delay+1]
+        if self.delay:
+            eva_arr[self.delay:] = eva_arr[:-self.delay]
+            eva_arr[:self.delay] *= 0
+            eva_arr[:self.delay] += eva_arr[self.delay+1]
         for t in flag_time:
             t_len = t[1]-t[0]
             t_len_sum += (t_len)
@@ -244,8 +234,12 @@ class SeqEvaluator(object):
         plt.xlabel("frames (1 frame = 0.55s)")
         plt.ylabel("probability")
 
-        for i in range(n_acr):
-            plt.plot(range(self.delay, n), eva_arr[:-self.delay, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
+        if self.delay:
+            for i in range(n_acr):
+                plt.plot(range(self.delay, n), eva_arr[:-self.delay, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
+        else:
+            for i in range(n_acr):
+                plt.plot(range(n), eva_arr[:, i], label=self.rev_act_dict[i], color=self.colors[i], linewidth=1)
 
         for flag in flag_time:
             act = flag[2]
@@ -263,24 +257,39 @@ class SeqEvaluator(object):
 
         ndata = self.dataset.shape[0]
         acclist = []
+        eva_list = []
+        flag_time_list = []
         for i in range(ndata):
             spec = self.data2sepc(self.dataset[i])
-            flag_time = self.flag2time(dataflag[i])
+            flag_time = self.flag2time(self.dataflag[i])
+            flag_time_list.append(flag_time)
             eva = cuda.to_cpu(self.get_a_evaluate(xp.array(spec)))
+            eva_list.append(eva)
             acclist.append(self.eva_overlap(eva, flag_time))
-            self.plot(eva, flag_time, save_name=save_root + ('%d_.svg' % i))
+            # self.plot(eva, flag_time, save_name=save_root + ('%d_.svg' % i))
             if i % 10 == 0:
                 print("eva_all(): %d/%d" % (i, ndata))
         logging.info("acc = %f" % np.mean(acclist))
-        return eva, flag_time
+        return eva_list, flag_time_list
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG,
+                        format='[%(levelname)s]   \t %(asctime)s \t%(message)s\t',
+                        datefmt='%Y/%m/%d (%A) - %H:%M:%S',
+                        filename= ROOT + 'train_' + time.strftime('%Y-%m-%d_%H-%M') + '.log',
+                        filemode='a'
+                        )
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('[%(levelname)s]  \t%(message)s\t')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
+
     # extra -- detail of evaluate
     detail_acc = np.zeros((6, 6), dtype=np.uint32)
 
-    
     ### training
-    M = Model()
+    M = Model(load_model=model.TINY_D_6ch)
     M.train()
     M.save_model('end')
     logging.info('training end')
