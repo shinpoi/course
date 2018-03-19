@@ -6,11 +6,12 @@ import csv
 import re
 import numpy as np
 import PIL.Image as Image
-import pickle
+import pickle as pk
 
 # <Parameter> dataset
 # DATA_DIR = './'
 DATA_DIR = '/home/shin-u16/document/HASC-IPSC/BasicActivity/'
+SEQ_DIR = '/home/shin-u16/document/HASC-IPSC/0_sequence/'
 PRE_NUM_OF_SAMPLE = 8000
 MAX_LENGTH = 2200
 MIN_LENGTH = 1900
@@ -259,23 +260,7 @@ def seq2specblock(seq_arr, plot=False, plot_save_root='./seqblock_plot/'):
             for j in range(n_block):
                 plot_spectrogram(data[i, j], name=(plot_save_root+"%d_%d.png" % (i, j)))
     return data
-"""
-import numpy as np
-import pickle as pk
-import dataset as da
 
-dataset, dataflag = da.csv2arr("/home/shin-u16/document/HASC-IPSC/0_sequence/", 30000, 40000, seq=True)
-print(dataset.shape, len(dataflag))
-np.save("dataset.npy", dataset)
-with open("dataflag.pkl", "wb") as f:
-    pk.dump(dataflag, f)
-
-scale = 20
-num = 81
-for i in range(scale, num, scale):
-    np.save(("seq_spec_%d.npy" % i), da.seq2specblock(dataset[i-scale:i]))
-    print("saved seq_spec_%d.npy include data[%d:%d]" % (i, i-scale, i))
-"""
 ########################################
 if __name__ == '__main__':
     # read dataset
@@ -311,3 +296,9 @@ if __name__ == '__main__':
 
     np.save('spec_dataset.npy', spec_dataset)
     print("spec_dataset have saved")
+
+    dataset, dataflag = csv2arr(SEQ_DIR, 30000, 40000, seq=True)
+    print(dataset.shape, len(dataflag))
+    np.save("dataset_seq.npy", dataset)
+    with open("dataflag.pkl", "wb") as f:
+        pk.dump(dataflag, f)
