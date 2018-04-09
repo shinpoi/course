@@ -1,3 +1,5 @@
+package javalr;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,25 +22,19 @@ public class Animal{
 		System.out.println(born_msg());
 	}
 
-	public static void main(String[] arg){
-		Animal a1 = new Animal();
-		Animal a2 = new Animal("kuro", 3, "abyss");
-		a1.name = "shiro";
-		a1.age = 2;
-		a1.birthplace = "Unkown";
-		a1.check();
-
-	}
+	public void setName(String n){name = n;}
+	public void setAge(int a){age=a;}
+	public void setBirthplace(String b){birthplace=b;}
 
 	protected String born_msg(){
 		return String.format("the %d ages Animal <%s> from <%s> was born!", age, name, birthplace);
 	}
 
-	protected void check(){
-		Pattern p = Pattern.compile("^(.+)? was born!$");
+	public void check(){
+		Pattern p = Pattern.compile("^the(.+?)? was born!$");
 		Matcher m = p.matcher(born_msg());
 		if (m.find()){
-			System.out.println(m.group(1) + ".");
+			System.out.println("there is" + m.group(1) + ".");
 		} else{
 			System.out.println("match failed...?");
 		}
