@@ -55,7 +55,7 @@ final 关键字来修饰常量
 `synchronized`：声明的方法同一时间只能被一个线程访问
 `volatile`：变量在每次被线程访问时，都强制从共享内存中重新读取该成员变量的值。当成员变量发生变化时，会强制线程将变化值回写到共享内存
 `transient`：序列化的对象包含被修饰的实例变量时，跳过该变量
-```c
+```java
 // synchronous[ˈsɪŋkrənəs]: 同步的
 // asynchronous[eɪˈsɪŋkrənəs]: 异步的
 // volatile[ˈvɒlətʌɪl]: 易变的，不稳定的
@@ -74,3 +74,42 @@ final 关键字来修饰常量
 e.g: `boolean res = name instanceof String`
 
 **运算优先级：** 一元 > 四则 > 位移 > 大小关系 > 相等关系 > 位运算 > 逻辑运算 > 三目 > 赋值 > 逗号
+
+### 8.字符串
+
+* `String`: final class，最快
+* `StringBuilder`: 内容可变，非线程安全（不能同步访问）
+* `StringBuffer`: 内容可变，线程安全，最慢
+
+格式化日期：
+```java
+java.util.SimpleDateFormat ft = new SimpleDateFormat ("E yyyy.MM.dd 'at' hh:mm:ss a zzz");
+ft.format(date);
+// // // //
+System.out.printf("年-月-日格式：%tF%n",date);  
+System.out.printf("月/日/年格式：%tD%n",date);  
+```
+
+### 9.数组
+声明&创建：
+```java
+dataType[] arrayRefVar;  // 标准
+dataType arrayRefVar[];  // 效果相同，C++风格
+arrayRefVar = new dataType[arraySize];
+// // // //
+dataType[] arrayRefVar = new dataType[arraySize];
+// // // //
+dataType[] arrayRefVar = {value_0, value_1, ..., value_k};
+```
+### 10.函数
+可变参数：
+```java
+//typeName... parameterName
+//传入typeName[] parameterName
+
+```
+
+### Others
+
+sleep:  
+`java.util.sleep()` 使当前线程进入停滞状态（阻塞当前线程），让出CPU的使用、目的是不让当前线程独自霸占该进程所获的CPU资源
