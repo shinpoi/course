@@ -8,7 +8,8 @@ export JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Duser.language=en"
 C:\\Windows\\system32\\cmd.exe /K "C:\\workspace\\alias.bat"
 
 # alias.bat
-doskey jvc=javac -encoding UTF-8 $*
+doskey jvc=javac -encoding UTF-8 -Xlint:unchecked $*
+doskey jc=javac -encoding UTF-8 -Xlint:unchecked $*
 doskey jv=java $*
 ```
 
@@ -28,4 +29,5 @@ doskey jv=java $*
 メソッド: method
 参照: reference
 演算子: operator
+ジェネリック型: generic type
 ```
