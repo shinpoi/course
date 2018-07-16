@@ -19,3 +19,6 @@ func main() {
 		}
 	}
 }
+
+// for inputScan.Scan(): read a line
+
