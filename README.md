@@ -1,5 +1,5 @@
 ## Information
-#### codes, notes, reports in Kyutech's courses
+#### codes, notes, reports in courses or another practice.
 
 ***
 
