@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"math/rand"
-	"os"
 )
 
 var palette = []color.Color{color.Black, color.White,
@@ -32,9 +31,9 @@ const (
 
 var freq = rand.Float64() * 3
 
-func main() {
+/*func main() {
 	lissajous(os.Stdout)
-}
+}*/
 
 func lissajous(out io.Writer) {
 	anim := gif.GIF{LoopCount: nframes}
