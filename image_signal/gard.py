@@ -12,9 +12,9 @@ def gard(img):
     gar_x[:size_x-1] = img[:size_x-1] - img[1:size_x]
     gar_y[:, :size_y-1] = img[:, :size_y-1] - img[:, 1:size_y]
 
-    cv2.imwrite("test_gar_x.jpg", gar_x)
-    cv2.imwrite("test_gar_y.jpg", gar_y)
-    cv2.imwrite("test_gar.jpg", gar_x + gar_y)
+    # cv2.imwrite("test_gar_x.jpg", gar_x)
+    # cv2.imwrite("test_gar_y.jpg", gar_y)
+    # cv2.imwrite("test_gar.jpg", gar_x + gar_y)
 
     return gar_x + gar_y
 
