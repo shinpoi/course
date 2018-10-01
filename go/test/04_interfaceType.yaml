@@ -1,0 +1,27 @@
+str: "string"
+int: 123
+float: -123.45
+
+map:
+  a: 1
+  b: 2
+  c: "3"
+
+array:
+  - 1
+  - 2
+  - 3
+  - "4"
+
+multi:
+  - 1
+  - 2
+  - 3
+  - submap:
+      a: "sub_a"
+      b: "sub_a"
+      c: "sub_b"
+      d:
+        - 0.1
+        - 0.2
+        - 0.3
