@@ -5,8 +5,7 @@ import (
 	"gitlab.com/golang-commonmark/markdown"
 )
 
-var markdownString =
-`
+var markdownString = `
 # Title
 
 ### subsub Title
@@ -31,9 +30,14 @@ Title2
 |n1   |v1    |
 |n2   |v2    |
 |n3   |v2    |
+
+<h1 class="someClass"> html tag test </h1>
+<p class="someClass"> html tag test </p>
+<script type="xxx" src="yyy"> html tag test </script>
 `
 
 func main() {
-	md := markdown.New(markdown.XHTMLOutput(true))
+	// out put XHTML & allow raw HTML
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
 	fmt.Println(md.RenderToString([]byte(markdownString)))
 }

@@ -12,7 +12,12 @@ var templateStr = `
 {{ block "header" .}} default header {{ end }}
 {{ block "body" .}} default body {{ end }}
 {{ block "footer" .}}{{ end }}
+{% myBlock "footer" %}{// end //}
+{{ .kk }} <-- this is kk
 `
+// {{ myBlock "footer" }} {{% end %}}
+// {{% myBlock "footer" %}} {{% end %}}
+// ... will err, do not use {{ ... }}
 
 var header1 = `{{ define "header" }} this is {{ .header }} {{ end }}`
 var header2 = `{{ define "header" }} this is header2 {{ end }}`
