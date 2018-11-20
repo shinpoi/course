@@ -34,7 +34,16 @@ Title2
 <h1 class="someClass"> html tag test </h1>
 <p class="someClass"> html tag test </p>
 <script type="xxx" src="yyy"> html tag test </script>
+
+` + "```" +
 `
+import abc
+
+def f():
+	return 1
+
+exit(0)
+` + "```"
 
 func main() {
 	// out put XHTML & allow raw HTML

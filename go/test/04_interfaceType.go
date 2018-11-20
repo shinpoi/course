@@ -54,7 +54,14 @@ func main() {
 	multiArr := m["multi"].([]interface{})
 	fmt.Println("multiArr ----------------------------")
 	for i:=0; i< len(multiArr); i++ {
-		fmt.Printf("- %v\n", reflect.TypeOf(multiArr[i]))
+		type_ := reflect.TypeOf(multiArr[i])
+		fmt.Printf("- %v\n", type_)
+		if type_ == reflect.TypeOf(make(map[interface{}]interface{})) {
+			subMap := multiArr[i].(map[interface{}]interface{})
+			for key := range subMap {
+				fmt.Printf("    - %v: %v\n", reflect.TypeOf(key), reflect.TypeOf(subMap[key]))
+				fmt.Printf("    - (%v: %v)\n", key, subMap[key])
+			}
+		}
 	}
-
 }
