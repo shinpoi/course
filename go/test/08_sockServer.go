@@ -4,14 +4,17 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/fcgi"
 	"os"
 )
 
-const sockPath = "/path_to/proxy_nginx.sock"
+const (
+	sockType = "unix"
+	scoPath = "/__path__/nginx.sock"
+)
 
-type myHandle struct{}
 
-func (myHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		_, err := w.Write([]byte("hello, nginx!"))
 		if err != nil {
@@ -23,20 +26,29 @@ func (myHandle) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	log.Println("Starting http server")
-	ls, err := net.Listen("unix", sockPath)
+	ls, err := net.Listen(sockType, scoPath)
 	if err != nil {
 		log.Fatal("unix sock error: ", err)
 		os.Exit(-1)
 	}
 
-	handle := myHandle{}
-	server := http.Server{
-		Handler: handle,
+	// fcgi
+	http.HandleFunc("/", ServeHTTP)
+	err = fcgi.Serve(ls, nil)
+	if err != nil {
+		log.Fatal("http server start err: ", err)
+		os.Exit(-1)
 	}
+
+	// http
+	/*
+	http.HandleFunc("/", ServeHTTP)
+	server := http.Server{}
 
 	err = server.Serve(ls)
 	if err != nil {
 		log.Fatal("http server start err: ", err)
 		os.Exit(-1)
 	}
+	*/
 }
