@@ -1,2 +1,2 @@
 ## Information
-#### codes, notes, reports in courses or another practice.
+#### codes, notes, reports and another studies.
